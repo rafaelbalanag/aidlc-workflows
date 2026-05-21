@@ -111,23 +111,17 @@ Replaced the two-step `uv venv` + `uv pip install -e .[dev]` with a single `uv s
 
 ## EVAL-009: Validator agent never called in practice
 
-**Status:** Open
+**Status:** Fixed (2026-05-21)
 **Area:** `scripts/aidlc-evaluator/packages/execution/src/aidlc_runner/agents/orchestrator.py`
 **Found during:** sci-calc-v2 runs (2026-05-20)
 
 ### Description
 
-Across all successful runs, the validator agent is never invoked. The handoff sequence is consistently: orchestrator → (simulator) → orchestrator → builder → orchestrator. The orchestrator reads back builder artifacts and proceeds directly to the next skill without calling the validator.
+Across all successful runs, the validator agent was never invoked. The orchestrator was reading builder artifacts and deciding they "looked correct" without an explicit prohibition against skipping validation.
 
-Likely cause: the orchestrator decides artifacts "look correct" and skips validation, which the orchestrator prompt does not explicitly prohibit.
+### Fix applied
 
-### Expected behaviour
-
-Every skill execution step should be followed by a validator handoff before the orchestrator advances.
-
-### Fix
-
-Add an explicit rule to the orchestrator prompt: "After EVERY builder execution handoff returns, you MUST immediately handoff to 'validator' before advancing to the next step or presenting artifacts to the simulator. Skipping validation is not permitted."
+Added a `MANDATORY VALIDATION RULE` section to the orchestrator system prompt with an explicit sequence diagram (`builder (execution) → validator → next step`), a list of prohibited skip behaviours, and the clarification that validation is only required after execution steps (not clarification or planning).
 
 ---
 
