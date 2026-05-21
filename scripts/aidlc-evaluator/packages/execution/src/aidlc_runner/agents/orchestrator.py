@@ -8,7 +8,6 @@ from typing import Any, Callable
 import boto3
 from botocore.config import Config as BotoConfig
 from strands import Agent
-from strands.agent.conversation_manager import SlidingWindowConversationManager
 from strands.models.bedrock import BedrockModel
 
 from aidlc_runner.config import ExecutionConfig, ModelConfig
@@ -41,6 +40,18 @@ ALL artifact generation is delegated exclusively:
 
 If you find yourself about to write a skill artifact file, STOP and hand off to "builder"
 instead. Violating this rule defeats the entire purpose of the multi-agent architecture.
+
+## HANDOFF IS YOUR LAST ACTION — CRITICAL
+
+When you call `handoff_to_agent`, that MUST be the LAST tool call in your turn.
+After calling `handoff_to_agent`, do NOT:
+- Call any other tool (no read_file, no load_rule, no list_files, no handoff_to_agent again)
+- Generate any text output
+- Do anything else
+
+The handoff transfers control to the other agent. Your turn is over the moment you call it.
+Calling handoff_to_agent multiple times or using other tools after it will break the workflow.
+ONE handoff per turn. Stop immediately after.
 
 ## MANDATORY VALIDATION RULE — NO EXCEPTIONS
 
@@ -169,11 +180,13 @@ def create_orchestrator(
         boto_client_config=boto_client_config,
     )
 
+    # No SlidingWindowConversationManager for the orchestrator — it needs full
+    # conversation history to track workflow state across handoffs. Pruning
+    # causes it to lose handoff results and retry handoffs repeatedly.
     return Agent(
         name="orchestrator",
         system_prompt=ORCHESTRATOR_SYSTEM_PROMPT,
         model=model,
         tools=tools,
         callback_handler=callback_handler,
-        conversation_manager=SlidingWindowConversationManager(window_size=20),
     )
