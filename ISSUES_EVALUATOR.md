@@ -144,6 +144,38 @@ This is expected Strands behavior but will compound significantly on longer work
 
 ---
 
+## EVAL-010: Kiro adapter doesn't find aidlc-docs under org-ai-kb/
+
+**Status:** Fixed (2026-05-21)
+**Area:** `scripts/aidlc-evaluator/packages/cli-harness/src/cli_harness/adapters/kiro_cli.py`
+**Found during:** first kiro v2 run (2026-05-21)
+
+### Description
+
+The v2 folder structure places aidlc-docs at `org-ai-kb/aidlc-docs/` inside the workspace. The kiro adapter's move step and completion check only looked for `workspace/aidlc-docs/`, missing the `org-ai-kb/` prefix.
+
+### Fix applied
+
+Added `_find_aidlc_docs(workspace)` helper that checks `workspace/aidlc-docs/` first, then searches one level deep for `<subdir>/aidlc-docs/`. Both the completion check and the move step now use this helper.
+
+---
+
+## EVAL-011: Construction unit name nondeterminism breaks qualitative matching
+
+**Status:** Fixed (2026-05-21)
+**Area:** `scripts/aidlc-evaluator/packages/qualitative/src/qualitative/document.py`
+**Found during:** first kiro v2 run (2026-05-21)
+
+### Description
+
+The kiro run named its construction unit `scientific-calculator-api` while the golden uses `sci-calc`. Since `pair_documents()` matched by path after stripping only the intent prefix, `construction/scientific-calculator-api/code-generation/` never matched `construction/sci-calc/code-generation/`, scoring all construction docs as 0.
+
+### Fix applied
+
+Added `_CONSTRUCTION_UNIT` regex to `document.py` that normalises `construction/<any-unit-name>/` to `construction/_unit_/` before matching. The `_normalise_path()` function applies both the intent prefix strip and this unit name normalisation. `_strip_intent_prefix()` is kept as an alias for backward compatibility.
+
+---
+
 ## EVAL-005: Audit write responsibility missing from builder/validator prompts (workaround)
 
 **Status:** Workaround applied (2026-05-19) — root fix belongs in `src/` (see ISSUES.md ISSUE-001)

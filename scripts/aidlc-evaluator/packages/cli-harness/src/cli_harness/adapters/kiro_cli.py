@@ -59,6 +59,24 @@ def _log(msg: str) -> None:
     print(f"  [kiro-cli] {msg}", file=sys.stderr, flush=True)
 
 
+def _find_aidlc_docs(workspace: Path) -> Path | None:
+    """Find the aidlc-docs/ directory anywhere under workspace.
+
+    Checks workspace/aidlc-docs/ first (v1), then searches one level deep
+    for <subdir>/aidlc-docs/ (covers v2's org-ai-kb/aidlc-docs/ layout).
+    Returns the first match, or None if not found.
+    """
+    direct = workspace / "aidlc-docs"
+    if direct.is_dir():
+        return direct
+    for child in sorted(workspace.iterdir()):
+        if child.is_dir() and not child.name.startswith("."):
+            candidate = child / "aidlc-docs"
+            if candidate.is_dir():
+                return candidate
+    return None
+
+
 class KiroCLIAdapter(CLIAdapter):
     """Adapter for kiro-cli.
 
@@ -211,13 +229,13 @@ class KiroCLIAdapter(CLIAdapter):
 
                     _log(f"Turn {turn} exited with code {process.returncode}")
 
-                    # Check completion — v2 and v1 use different indicators
-                    aidlc_docs_dir = workspace / "aidlc-docs"
-                    if aidlc_docs_dir.is_dir():
+                    # Check completion — search for aidlc-docs/ anywhere under workspace
+                    # (v2 places it at org-ai-kb/aidlc-docs/, v1 at aidlc-docs/)
+                    aidlc_docs_dir = _find_aidlc_docs(workspace)
+                    if aidlc_docs_dir is not None:
                         file_count = sum(1 for _ in aidlc_docs_dir.rglob("*") if _.is_file())
 
                         if is_v2:
-                            # v2: look for intent-state.md with "status: complete"
                             complete = False
                             for state_file in aidlc_docs_dir.rglob("intent-state.md"):
                                 content = state_file.read_text(encoding="utf-8")
@@ -229,7 +247,6 @@ class KiroCLIAdapter(CLIAdapter):
                                 _log("intent-state.md shows complete — workflow done")
                                 break
                         else:
-                            # v1: look for construction phase files
                             has_construction = (
                                 any((aidlc_docs_dir / "construction").rglob("*.md"))
                                 if (aidlc_docs_dir / "construction").is_dir() else False
@@ -254,10 +271,11 @@ class KiroCLIAdapter(CLIAdapter):
             for item in sorted(workspace.iterdir()):
                 _log(f"  {item.name}/") if item.is_dir() else _log(f"  {item.name}")
 
-            # Move aidlc-docs up from workspace/ to output_dir/ (sibling of workspace/)
-            src_docs = workspace / "aidlc-docs"
+            # Move aidlc-docs to output_dir/ — search anywhere under workspace
+            # (v2 places it at org-ai-kb/aidlc-docs/, v1 at aidlc-docs/)
+            src_docs = _find_aidlc_docs(workspace)
             dst_docs = config.output_dir / "aidlc-docs"
-            if src_docs.is_dir():
+            if src_docs is not None:
                 if dst_docs.exists():
                     shutil.rmtree(dst_docs)
                 shutil.move(str(src_docs), str(dst_docs))

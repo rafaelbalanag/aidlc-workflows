@@ -17,6 +17,11 @@ _SKIP_FILES = frozenset({
 # classifying phase so both v1 and v2 layouts produce the same phase labels.
 _INTENT_PREFIX = re.compile(r"^intent-\d{3}-[^/]+/")
 
+# Construction paths include a per-unit name that varies across runs
+# (e.g. "sci-calc", "scientific-calculator-api"). Normalise to a fixed
+# placeholder so documents pair correctly regardless of the unit name chosen.
+_CONSTRUCTION_UNIT = re.compile(r"^(construction/)[^/]+/(.+)$")
+
 
 @dataclass
 class AidlcDocument:
@@ -27,9 +32,24 @@ class AidlcDocument:
     content: str
 
 
+def _normalise_path(relative_path: str) -> str:
+    """Normalise a document path for matching across runs.
+
+    Applies two transformations:
+    1. Strips the leading v2 intent directory (intent-NNN-slug/) if present.
+    2. Replaces the per-unit name in construction paths with a fixed token
+       (construction/<unit>/ → construction/_unit_/) so that runs using
+       different unit names (e.g. "sci-calc" vs "scientific-calculator-api")
+       still pair correctly.
+    """
+    path = _INTENT_PREFIX.sub("", relative_path)
+    path = _CONSTRUCTION_UNIT.sub(r"\1_unit_/\2", path)
+    return path
+
+
+# Keep the old name as an alias so external callers aren't broken.
 def _strip_intent_prefix(relative_path: str) -> str:
-    """Remove a leading v2 intent directory (intent-NNN-slug/) if present."""
-    return _INTENT_PREFIX.sub("", relative_path)
+    return _normalise_path(relative_path)
 
 
 def classify_phase(relative_path: str) -> str:
@@ -98,8 +118,8 @@ def pair_documents(
 
     Returns (paired, unmatched_reference_paths, unmatched_candidate_paths).
     """
-    ref_by_stripped = {_strip_intent_prefix(d.relative_path): d for d in reference_docs}
-    cand_by_stripped = {_strip_intent_prefix(d.relative_path): d for d in candidate_docs}
+    ref_by_stripped = {_normalise_path(d.relative_path): d for d in reference_docs}
+    cand_by_stripped = {_normalise_path(d.relative_path): d for d in candidate_docs}
 
     paired: list[DocumentPair] = []
     for stripped_path, ref_doc in ref_by_stripped.items():
