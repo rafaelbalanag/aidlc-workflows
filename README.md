@@ -30,7 +30,6 @@ v2 does not yet ship release zips. To try it, clone this branch and follow the p
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) — used to run the build script (via `npm`) and the deterministic process checker
-- A POSIX shell to run the build script — preinstalled on macOS and Linux. On Windows, use [Git Bash](https://git-scm.com/downloads) or WSL.
 - One of the [supported platforms](#platform-support)
 
 ### Clone the repo
@@ -148,7 +147,7 @@ Run `kiro-cli`, then `/context show`. Confirm that `.kiro/skills/` and `.kiro/ai
 | Skills not loading in Kiro | Confirm `.kiro/` at your project root contains `agents/`, `aidlc-common/`, `hooks/`, and `skills/` (other Kiro-managed folders may also be present). Restart your Kiro session after copying. |
 | File encoding issues | Ensure files are UTF-8 encoded. |
 | Rules not applied in session | Start a new chat session after updating `.kiro/`. |
-| Build fails | Confirm Node.js and a POSIX shell are installed and on your `PATH`. Run `npm run clean && npm run build:kiro`. |
+| Build fails | Confirm Node.js is installed and on your `PATH`. Run `npm run clean && npm run build:kiro`. |
 | Windows paths not resolving | Use forward slashes `/` inside markdown files. Backslashes can break path resolution. |
 
 ---
