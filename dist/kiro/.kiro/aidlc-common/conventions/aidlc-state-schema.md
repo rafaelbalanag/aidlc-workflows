@@ -145,3 +145,26 @@ verification : rejected            → execution : pending             (incremen
 - Never decreases
 - Max defined by config (default: 3)
 - Max reached + validation fail = halting
+
+---
+
+## Audit File Format
+
+The audit file (`audit/intent-audit.md`) records a log of step completions for traceability. `process_checker` parses this file at skill-complete to verify no steps were skipped.
+
+### Format
+
+```markdown
+# Intent Audit
+
+| Skill | Step | Status | Timestamp |
+|---|---|---|---|
+| <stateKey> | <step> | <status> | <ISO-timestamp> |
+```
+
+### Rules
+
+1. Each row records a completed step transition. Use the same `stateKey` as in `intent-state.md` (e.g., `requirements-analysis`, `functional-design:auth-service`).
+2. The `Step` column must use the step names: `clarification`, `plan`, `execution`, `validation`, `verification`.
+3. Entries must be pipe-delimited table rows — not prose, not bullets, not freeform text.
+4. `process_checker` verifies that the audit file contains entries for all required steps (`clarification`, `execution`, `validation`, and `plan` if `plan-creation: "true"`) for the current skill at skill-complete.

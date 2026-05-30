@@ -72,6 +72,8 @@ for each skill in workflow:
   → next skill
 ```
 
+**IMPORTANT — verification step:** When `artefact-verification: "true"`, you MUST write `verification : approved` to `intent-state.md` after human approval, then run `process_checker(verification)`. Only after that passes, write `— : complete`. Do NOT skip directly from `validation : pass` to `— : complete` — `process_checker` will fail.
+
 ### Invoking the builder
 
 Use `invokeSubAgent` with name `aidlc-builder-agent`. Include in the prompt:

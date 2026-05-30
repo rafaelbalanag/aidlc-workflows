@@ -32,7 +32,7 @@ The validator receives from the orchestrator:
    - **Script results** — fold the exit codes captured in step 5 into the findings. Do not re-run the scripts.
    - **Clarification consistency** — artifacts are consistent with the answers in the question file.
    - **Completeness** — gaps the spec may not have anticipated (missing coverage, unstated assumptions, logical inconsistencies).
-7. Write a validation report to the skill output folder.
+7. Write a validation report to the skill output folder. The filename **must** be `<stage-name>-validation-result.md` (e.g., `requirements-analysis-validation-result.md`). This exact name is required by `process_checker`.
 8. Return to the orchestrator: status `pass` or `fail`, validation report path.
 
 ## 3. Validation Report Format
