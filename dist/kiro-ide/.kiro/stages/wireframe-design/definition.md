@@ -27,4 +27,4 @@ product-owner
 
 ## Reviewer
 
-delivery-lead
+product-lead

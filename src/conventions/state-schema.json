@@ -53,6 +53,9 @@
               "review-needed",
               "reviewed",
               "refined",
+              "final-review-needed",
+              "final-review-complete",
+              "finalised",
               "presented",
               "changes-requested",
               "complete"
@@ -67,6 +70,10 @@
             "type": "array",
             "items": { "type": "string" },
             "description": "Personas assigned as contributors"
+          },
+          "reviewer": {
+            "type": "string",
+            "description": "Persona assigned as final reviewer (e.g. product-lead)"
           },
           "reviews": {
             "type": "array",
@@ -99,7 +106,7 @@
                 },
                 "locationRelativeToIntentRoot": {
                   "type": "string",
-                  "description": "DIRECTORY path relative to intent root where the file lives. Must end with '/'. Examples: '/' for intent root, '/state/' for state directory, '/stages/requirements-analysis/' for a domain stage directory. The full file path is: <intent-dir> + locationRelativeToIntentRoot + name"
+                  "description": "DIRECTORY path relative to intent root where the file lives. Must end with '/'. Examples: '/' for intent root, '/state/' for state directory, '/stages/requirements-analysis/' for a domain stage directory."
                 }
               }
             }
