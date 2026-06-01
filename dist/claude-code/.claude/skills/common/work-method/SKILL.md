@@ -1,7 +1,7 @@
 ---
 name: work-method
 description: |
-  The professional discipline of how work gets done. Defines what to produce at each step of a stage, and ensures everything is persisted to disk per conventions. Every persona carries this skill.
+  This skill describes how you work in each stage. As an owner, what are your tasks — plan, clarify, produce artifacts, refine based on feedback. As a reviewer, what are your tasks — read the artifact, write a review. Must be used to execute each stage. Defines what to produce at each step and ensures everything is persisted to disk per conventions.
 ---
 
 # Work Method

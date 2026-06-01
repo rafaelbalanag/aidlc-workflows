@@ -119,24 +119,63 @@ function parseYaml(content) {
 function personaToAgent(yamlContent) {
   const persona = parseYaml(yamlContent);
 
-  // Append generic skills to the prompt
-  const genericSkillsDir = path.join(SRC, "skills", "generic");
-  let genericSkillsContent = "";
-  if (fs.existsSync(genericSkillsDir)) {
-    for (const skillDir of fs.readdirSync(genericSkillsDir, { withFileTypes: true })) {
-      if (!skillDir.isDirectory()) continue;
-      const skillFile = path.join(genericSkillsDir, skillDir.name, "SKILL.md");
-      if (fs.existsSync(skillFile)) {
-        genericSkillsContent += "\n\n" + fs.readFileSync(skillFile, "utf-8");
-      }
+  // Build prompt from only identity fields (not metadata)
+  const promptLines = [];
+  promptLines.push(`name: ${persona.name || ""}`);
+  promptLines.push("");
+  if (persona.description) {
+    promptLines.push(`description: >`);
+    promptLines.push(`  ${persona.description.trim()}`);
+    promptLines.push("");
+  }
+  if (persona.behaviour) {
+    promptLines.push(`behaviour: |`);
+    for (const line of persona.behaviour.trim().split("\n")) {
+      promptLines.push(`  ${line}`);
     }
+    promptLines.push("");
+  }
+
+  // Append platform-specific prompt augment if it exists
+  const augmentFile = path.join(SRC, "platform-config", "kiro-ide", "persona-prompt-augment.yaml");
+  if (fs.existsSync(augmentFile)) {
+    const augmentContent = fs.readFileSync(augmentFile, "utf-8");
+    const augment = parseYaml(augmentContent);
+    if (augment["pre-augment"]) {
+      promptLines.unshift(augment["pre-augment"].trim(), "");
+    }
+    if (augment["post-augment"]) {
+      promptLines.push(augment["post-augment"].trim());
+      promptLines.push("");
+    }
+  }
+
+  const prompt = promptLines.join("\n");
+
+  // Build resources array from associated-skills + common skills
+  const resources = [];
+
+  // Add common skills (work-method, etc.)
+  const commonSkillsDir = path.join(SRC, "skills", "common");
+  if (fs.existsSync(commonSkillsDir)) {
+    for (const skillDir of fs.readdirSync(commonSkillsDir, { withFileTypes: true })) {
+      if (!skillDir.isDirectory()) continue;
+      resources.push(`skill://.kiro/skills/common/${skillDir.name}/SKILL.md`);
+    }
+  }
+
+  // Add domain skills from associated-skills
+  const associatedSkills = persona["associated-skills"] || [];
+  for (const skill of associatedSkills) {
+    resources.push(`skill://.kiro/skills/${skill}/SKILL.md`);
   }
 
   return {
     name: persona.name || "",
     description: (persona.description || "").trim(),
-    prompt: yamlContent + genericSkillsContent,
+    prompt,
     tools: ["read", "write", "shell"],
+    resources,
   };
 }
 
