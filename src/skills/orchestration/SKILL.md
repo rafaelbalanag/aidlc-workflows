@@ -14,13 +14,18 @@ The ability to drive a development workflow end-to-end — sequencing stages, as
 
 ## Welcome
 
-When activated, display:
+When activated, display this banner inside a markdown code block (triple backticks). Emit it exactly as shown — preserve all line breaks:
 
 ```
-AI-DLC Workflow Initiated
+╔══════════════════════════════════════════════════════════╗
 
-Humans provide the judgement.
-AI orchestrates, executes, and self-verifies.
+   🚀 AI-DLC Workflow 2.0 Initiated
+
+   Humans codify the judgement.
+   AI orchestrates and self-verifies — deterministically.
+   Marching towards Autonomous Development.
+
+╚══════════════════════════════════════════════════════════╝
 ```
 
 Then proceed to workspace setup.
@@ -52,7 +57,7 @@ Before execution begins, compose the adaptive workflow for this intent. Read the
 3. **Include contributors by default** — assign the stage's listed contributors unless the human explicitly says prototype, POC, spike, or bug fix. When in doubt, include. The human can always say "skip reviews" if they want to.
 4. **Respect dependencies** — never include a stage without its prerequisites. If you include nfr-design, you must include nfr-assessment.
 5. **When uncertain, include** — it's better to do a lightweight pass than to skip and discover the gap later.
-6. **Present the composed workflow to the human** — show which stages will run, which contributors are assigned, and why. Do NOT reference path names (A, B, C, D) — those are internal reasoning aids. Just present the ordered list of stages with rationale.
+6. **Present the composed workflow to the human** — show a table with columns: #, Stage, Owner, Contributors, Reviewers, Rationale. Present every stage in the composed workflow.
 
 ### Composition output
 
@@ -89,9 +94,9 @@ orchestrator    → clarification-provided   (wrote human's answers to questions
 owner           → further-clarification    (needs more answers)
 orchestrator    → clarification-provided   (wrote human's follow-up answers to questions.md, then invokes owner)
 owner           → artifact-generated       (produced output artifacts)
-orchestrator    → review-needed            (invokes contributors)
-orchestrator    → reviewed                 (all contributors have returned their reviews)
-owner           → refined                  (addressed review comments)
+orchestrator    → contribution-needed      (invokes contributors)
+orchestrator    → contributed              (all contributors have returned their contributions)
+owner           → refined                  (addressed contributor feedback)
 orchestrator    → final-review-needed      (invokes reviewer)
 orchestrator    → final-review-complete    (reviewer has returned their review)
 owner           → finalised                (addressed reviewer feedback)
@@ -106,9 +111,10 @@ orchestrator    → complete                 (human approved)
 
 - Each actor only sets state for what THEY did — never for what someone else will do
 - When re-invoking a persona, pass all relevant files from the stage directory as context
-- If no contributors are assigned, skip review — go from `artifact-generated` to `final-review-needed` (if reviewer assigned) or `presented` (if no reviewer)
-- If no review comments exist, skip refine — go from `reviewed` to `final-review-needed` (if reviewer assigned) or `presented` (if no reviewer)
+- If no contributors are assigned, skip contribution — go from `artifact-generated` to `final-review-needed` (if reviewer assigned) or `presented` (if no reviewer)
+- If no contributor comments exist, skip refine — go from `contributed` to `final-review-needed` (if reviewer assigned) or `presented` (if no reviewer)
 - The final reviewer step is NEVER skipped when a reviewer is assigned in the workflow. Only the absence of a reviewer in the stage definition removes that step.
+- When invoking multiple contributors, invoke them ALL in a single turn (parallel). Do not wait for one contributor to finish before invoking the next.
 - Mandatory post-review sequence when reviewer is assigned: `refined` → `final-review-needed` → `final-review-complete` → `finalised` → `presented`
 
 ### How to invoke a persona:
@@ -123,12 +129,20 @@ directory: <full-path-to-stage-directory>
 
 The persona knows who it is. The work-method skill tells it what to do based on the status. The files in the directory provide all context. Do not add instructions, summaries, guidelines, or file contents to the invocation.
 
+### Invocation wording:
+
+When describing a persona invocation to the human, use the correct verb for their role:
+- **Contributors** → "Invoking \<persona\> to **contribute** to the \<artifact\>."
+- **Reviewers** → "Invoking \<persona\> to **review** the \<artifact\>."
+
+Do not use "review" for contributors or "contribute" for reviewers.
+
 ## Process Verification
 
 The process checker (`tools/process-checker.js`) runs after sub-agent invocations. It checks only:
 
 - If outputs are declared in state, do the files exist on disk?
-- If reviews are declared and stage is past review, did all reviewers review?
+- If contributions are declared and stage is past the contribution step, did all contributors contribute?
 
 It does not track state transitions. It does not check content quality.
 
