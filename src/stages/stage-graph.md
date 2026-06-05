@@ -26,7 +26,7 @@ Directed graph of all available stages. The orchestrator reads this during workf
 | nfr-design | Design patterns and logical components that satisfy NFR targets per unit | aidlc-systems-architect-agent |
 | infrastructure-design | Map logical components to infrastructure services and define deployment | aidlc-systems-architect-agent |
 | code-generation | Generate production code per unit with write-test-verify cycles | aidlc-sw-dev-engineer-agent |
-| build-and-test | Build, test, and verify the code | (tbd) |
+| dependency-verification | Connect code to real dependencies and verify it works against them | aidlc-sw-dev-engineer-agent |
 
 ## Dependencies
 
@@ -45,7 +45,7 @@ Stages have flexible inputs — they can start from multiple predecessors or dir
 | nfr-design | nfr-assessment (targets + tech stack), functional-design artifacts, unit-contracts |
 | infrastructure-design | nfr-design (logical components + patterns), tech-stack-decisions |
 | code-generation | functional-design, nfr-assessment, nfr-design, infrastructure-design, units-generation, application-design, stories, requirements |
-| build-and-test | code-generation output |
+| dependency-verification | code-generation (generated code with adapter abstractions), infrastructure-design (service mapping) |
 
 ## Composition Rules
 

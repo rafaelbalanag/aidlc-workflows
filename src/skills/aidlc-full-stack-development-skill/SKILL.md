@@ -17,6 +17,7 @@ Write production-quality code that works. Not just code that looks right — cod
 - One concern at a time — scaffold first, then domain logic, then integration, then polish
 - Brownfield respect — match existing patterns, styles, and conventions. Don't introduce a new paradigm next to the old one
 - Fail fast — if a step doesn't compile or tests don't pass, fix it before moving on
+- Abstract external dependencies — always place databases, queues, caches, APIs, and other external systems behind interfaces (ports/adapters, factory pattern, repository pattern). Generate both the interface and the real implementation. Tests use mock implementations; dependency-verification uses real ones.
 
 ## Approach
 
@@ -48,6 +49,6 @@ Adapt the layers to the tech stack. Not every project has all of these.
 
 ## Application
 
-When applied at code-generation, this skill drives the plan structure and the step-by-step execution. Each step in the plan is a write-test-verify cycle.
+When applied at code-generation, this skill drives the plan structure and the step-by-step execution. Each step in the plan is a write-test-verify cycle. All code is generated — business logic, real adapter implementations, infrastructure-as-code, deployment scripts — but testing during this stage uses mock dependencies.
 
-When applied at build-and-test, this skill manifests as: understanding how to run the build, interpret test output, diagnose failures, and fix them.
+When applied at dependency-verification, this skill manifests as: swapping mock implementations for real ones, configuring connections, running the code against real dependencies, and diagnosing integration failures.
