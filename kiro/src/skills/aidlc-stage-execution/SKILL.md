@@ -82,6 +82,10 @@ The `reviewIterations` counter in state.json tracks how many times the reviewer 
 9. When re-invoking a persona, pass all relevant files from the stage directory as context.
 10. **If a stage has no `autonomy` property in workflow.json, default to `supervised`.** Human gates always block unless explicitly opted out.
 
+## Contributor Invocation
+
+When a stage has multiple contributors, invoke ALL of them in a single turn (parallel sub-agent calls). Each contributor receives the same invocation format and writes independently to the stage directory. Wait for all to return before proceeding to the refinement step. Do not invoke them sequentially — issue all contributor invocations in one message.
+
 ## How to Invoke a Persona
 
 Use this exact format — nothing more:
