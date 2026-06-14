@@ -24,7 +24,26 @@ From workspace state + intent language + existing artifacts, classify internally
 | Exploration | prototype, POC, spike, experiment, test, demo, learning | requirements → code | no reviewer |
 | Wireframes only | UI design, screen flows, mockups | wireframe-design | product-lead review |
 
-## Step 2: Surface Integrations and Confirm Context
+## Step 2: Check Team Preferences
+
+Read `org-ai-kb/<team>/memory/preferences.md` and `org-ai-kb/<team>/memory/corrections.md`.
+
+If preferences exist, surface them for confirmation:
+
+> "I see these team preferences:
+> - [list each preference from the file]
+>
+> Want to keep these for this intent, or change anything?"
+
+If no preferences exist (file empty or missing):
+
+> "No team preferences set yet. Want to set any defaults for autonomy, formats, or stage composition? Or just proceed and I'll propose as we go?"
+
+**STOP HERE. Wait for the human to confirm before continuing.**
+
+Apply confirmed preferences to all downstream decisions: autonomy per stage, output formats, contributor/reviewer defaults, depth. If the human changes a preference for this intent, note whether it should also update the preferences file for future intents.
+
+## Step 3: Surface Integrations and Confirm Context
 
 Before proposing anything, surface what you see and ask the two questions that shape the plan:
 
@@ -46,7 +65,7 @@ The answers determine:
 
 If no integrations are detected, ask only the second question.
 
-## Step 3: State the High-Level Path
+## Step 4: State the High-Level Path
 
 Casually state the stages you're thinking:
 
@@ -58,7 +77,7 @@ Or:
 
 This gives the big picture without committing. Stages can change as you learn more.
 
-## Step 4: Propose Each Stage with Options
+## Step 5: Propose Each Stage with Options
 
 For each stage, present the composition and a table of modifications:
 
@@ -100,7 +119,7 @@ Also: **always default autonomy to supervised**. Only set `"autonomy": "full"` i
 
 Options should be specific to the stage and the intent — not generic. Options must cover all composable components where relevant: stage additions/removals, contributor changes, reviewer changes, and iteration count. Always include at least one stage-level option (skip a stage, add a stage, reorder) unless this is a full-scale build with all stages already included. Options should be driven by the trade-off between minimal cost/time and highest achievable quality for the classified intent type.
 
-## Step 5: Reassess Before Every Stage
+## Step 6: Reassess Before Every Stage
 
 Before proposing the next stage, briefly check if anything has changed based on what you learned from the previous stage's output. If nothing changed, just propose the next stage with options.
 
