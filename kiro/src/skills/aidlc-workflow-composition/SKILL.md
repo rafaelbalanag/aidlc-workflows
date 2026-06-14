@@ -74,23 +74,26 @@ This gives the big picture without committing. Stages can change as you learn mo
 
 ## Step 5: Propose Each Stage with Options
 
-For each stage, present the composition and a table of modifications:
+For each stage, present the composition with autonomy visible in the header:
 
-> **Next up: Requirements Analysis**
+> **Next up: Requirements Analysis** — supervised
 >
-> 1. Requirements document will be produced by product-manager
-> 2. Reviewer will review 1 time
-> 3. Will be presented to you
->
-> You may want to modify this:
+> 1. You'll answer clarification questions
+> 2. Requirements document produced by product-manager
+> 3. Reviewer will review 1 time
+> 4. Will be presented to you for approval
 >
 > | Option | Rationale |
 > |---|---|
-> | Include a security contributor | Handles PII and identity documents — catches compliance gaps early |
+> | Run as **guided** (skip your final review) | You trust the AI + reviewer to deliver — you only answer questions |
+> | Run as **fully autonomous** | Skip questions too — AI handles everything |
+> | Include a security contributor | Handles PII — catches compliance gaps early |
 > | Remove review | Your review is sufficient, saves time |
 > | Add an iteration | More chances of fixing gaps before you see it |
 >
 > Good to go, or pick an option?
+
+The autonomy mode MUST be stated in the header (e.g., "— supervised", "— guided", "— full"). Changing autonomy is always available as an option. The default is supervised unless learned preferences for this category say otherwise.
 
 **STOP HERE. Wait for the human to respond before executing the stage.**
 
@@ -103,16 +106,17 @@ node .kiro/tools/state-manager.js add-stage \
   --owner <owner-persona> \
   --phase <inception|construction|operations> \
   --contributors <comma-separated-if-any> \
-  --reviewer <reviewer-persona-if-any>
+  --reviewer <reviewer-persona-if-any> \
+  --autonomy <supervised|guided|full>
 ```
 
 This makes the stage visible to the state-manager for transition tracking. Then proceed to stage execution.
 
-After the options table, always add: "**These are suggestions — you can add, drop, or reorder any stages, change contributors, adjust review cycles, or tell me to do something completely different.**"
+After the options table, always add: "**These are suggestions — you can add, drop, or reorder any stages, change contributors, adjust review cycles, change autonomy, or tell me to do something completely different.**"
 
-Also: **always default autonomy to supervised**. Only set `"autonomy": "full"` if the human explicitly requests it ("just do it", "skip the questions", "full autonomy"). Never silently grant full autonomy.
+**Workflow-level autonomy:** If the human says "run it all autonomous" or "make everything guided" during Step 4 (high-level path), apply that mode to all stages. They can still override per-stage in this step.
 
-Options should be specific to the stage and the intent — not generic. Options must cover all composable components where relevant: stage additions/removals, contributor changes, reviewer changes, and iteration count. Always include at least one stage-level option (skip a stage, add a stage, reorder) unless this is a full-scale build with all stages already included. Options should be driven by the trade-off between minimal cost/time and highest achievable quality for the classified intent type.
+Options should be specific to the stage and the intent — not generic. Options must cover all composable components where relevant: stage additions/removals, contributor changes, reviewer changes, iteration count, and autonomy changes. Always include at least one stage-level option (skip a stage, add a stage, reorder) unless this is a full-scale build with all stages already included. Options should be driven by the trade-off between minimal cost/time and highest achievable quality for the classified intent type.
 
 ## Step 6: Reassess Before Every Stage
 
