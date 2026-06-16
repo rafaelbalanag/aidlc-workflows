@@ -2,7 +2,9 @@
 //
 // Behavioural contract for the Stop hook `aidlc-stop.ts` — the framework's
 // FIRST flow-altering hook. Migrated from tests/integration/t121-stop-hook-enforce.sh
-// (TAP plan 13). Mechanism: cli. The hook's entire contract lives on the
+// (originally TAP plan 13; now 16 named tests — the original 13 .sh assertions
+// plus the three (e) human-wait carve-out cases added with that feature).
+// Mechanism: cli. The hook's entire contract lives on the
 // PROCESS boundary — it reads Claude Code JSON off stdin, resolves the project
 // via CLAUDE_PROJECT_DIR, spawns a sub-engine (`aidlc-orchestrate.ts next`)
 // via Bun.spawnSync, and answers by writing {"decision":"block",...} to stdout
@@ -47,6 +49,14 @@
 //   .sh (d) RC=0 with no state file           -> "(d) no aidlc-state.md exits 0"
 //   .sh (d) no-op outside AIDLC => empty       -> "(d) no active workflow emits nothing (non-AIDLC session never blocked)"
 //   .sh robustness (3 fail-open sub-cases)    -> "garbage stdin + unparseable engine output fail OPEN"
+//
+// NEW (no .sh predecessor) — the tier-1 human-wait carve-out. The hook reads
+// the current stage's checkbox state (exported parseCheckboxes, aidlc-lib.ts
+// :587) and ALLOWS the stop when it is positively [?]/[R], so an interactive
+// gate / Request-Changes pause no longer spams the forwarding-loop nudge:
+//   (e) [?] awaiting-approval -> ALLOW (run-stage pending, but human-wait)
+//   (e) [R] revising          -> ALLOW (Request-Changes loop, human-wait)
+//   (e) [-] in-progress       -> BLOCK (positive-only; not widened into [-])
 //
 // §6-E note: this is a non-golden twin (a flow-altering hook whose block event
 // must ACTUALLY FIRE). Cases (a)/(c2) drive the BLOCK path to real
@@ -129,6 +139,65 @@ function seedActive(proj: string, slug = "requirements-analysis"): void {
   writeFileSync(join(proj, "aidlc-docs", "audit.md"), "audit row 1\n", "utf-8");
 }
 
+/**
+ * Seed an active workflow whose Current Stage ALSO carries a checkbox row in a
+ * given state — the shape the tier-1 human-wait carve-out reads. `marker` is the
+ * raw checkbox glyph ("?" awaiting-approval, "R" revising, "-" in-progress); the
+ * row matches parseCheckboxes' `^- \[([ xSR?-])\] (\S+)\s*—\s*(.*)$` grammar
+ * (aidlc-lib.ts:589 — note the em-dash). seedActive's stateless shape (no rows)
+ * remains the default the 13 legacy assertions use, which is exactly why they
+ * stay green: parseCheckboxes returns [] and the carve-out cannot trigger.
+ */
+function seedActiveWithCheckbox(
+  proj: string,
+  marker: string,
+  slug = "requirements-analysis",
+): void {
+  writeFileSync(
+    join(proj, "aidlc-docs", "aidlc-state.md"),
+    `- **Workflow**: feature\n- **Scope**: feature\n- **Current Stage**: ${slug}\n` +
+      `\n## Stage Progress\n- [${marker}] ${slug} — EXECUTE\n`,
+    "utf-8",
+  );
+  writeFileSync(join(proj, "aidlc-docs", "audit.md"), "audit row 1\n", "utf-8");
+}
+
+/**
+ * Seed an active workflow at [-] in-progress for the tier-2 pending-question
+ * carve-out. Writes Lifecycle Phase (so the hook can derive the stage dir
+ * `aidlc-docs/<phase-lowercase>/<slug>/`, mirroring memoryPathFor in
+ * aidlc-orchestrate.ts:353) and a `[-]` checkbox row. Options:
+ *   - `questions`: if given, writes `<slug>-questions.md` in the stage dir with
+ *     this body (a blank `[Answer]:` tag = a pending question; an answered one
+ *     = resolved). Omit to seed NO questions file.
+ *   - `autonomy`: if given, writes `- **Construction Autonomy Mode**: <value>`
+ *     into state — `"autonomous"` must suppress the carve-out (loop stays alive).
+ * `phase` defaults to inception (requirements-analysis' real phase).
+ */
+function seedInProgressWithQuestions(
+  proj: string,
+  opts: { slug?: string; phase?: string; questions?: string; autonomy?: string } = {},
+): void {
+  const slug = opts.slug ?? "requirements-analysis";
+  const phase = opts.phase ?? "inception";
+  const autonomyLine = opts.autonomy
+    ? `- **Construction Autonomy Mode**: ${opts.autonomy}\n`
+    : "";
+  writeFileSync(
+    join(proj, "aidlc-docs", "aidlc-state.md"),
+    `- **Workflow**: feature\n- **Scope**: feature\n- **Lifecycle Phase**: ${phase.toUpperCase()}\n` +
+      `- **Current Stage**: ${slug}\n${autonomyLine}` +
+      `\n## Stage Progress\n- [-] ${slug} — EXECUTE\n`,
+    "utf-8",
+  );
+  writeFileSync(join(proj, "aidlc-docs", "audit.md"), "audit row 1\n", "utf-8");
+  if (opts.questions !== undefined) {
+    const stageDir = join(proj, "aidlc-docs", phase.toLowerCase(), slug);
+    mkdirSync(stageDir, { recursive: true });
+    writeFileSync(join(stageDir, `${slug}-questions.md`), opts.questions, "utf-8");
+  }
+}
+
 interface HookResult {
   rc: number;
   out: string; // stdout only (the .sh discarded stderr with 2>/dev/null)
@@ -199,7 +268,7 @@ function guardCount(proj: string): number | null {
   }
 }
 
-describe("t121 aidlc-stop hook — forwarding-loop enforcement (migrated from t121-stop-hook-enforce.sh, plan 13)", () => {
+describe("t121 aidlc-stop hook — forwarding-loop enforcement (migrated from t121-stop-hook-enforce.sh, plan 13 + 3 human-wait carve-out cases)", () => {
   // =========================================================================
   // (a) Pending directive -> BLOCK + re-fed via reason. The block event MUST
   //     actually fire (§6-E non-golden).
@@ -364,6 +433,123 @@ describe("t121 aidlc-stop hook — forwarding-loop enforcement (migrated from t1
   test("(d) no active workflow emits nothing (non-AIDLC session is never blocked)", () => {
     const proj = makeProject();
     const r = runHook(proj, '{"stop_hook_active":false}', "run-stage");
+    expect(r.out).toBe("");
+  }, 30000);
+
+  // =========================================================================
+  // (e) HUMAN-WAIT CARVE-OUT — when the current stage is positively in a
+  // human-wait checkbox state ([?] awaiting-approval / [R] revising) the
+  // conductor is correctly parked on the human, so the hook ALLOWS the stop
+  // even though the engine still returns a pending run-stage. Tier 1 only:
+  // [-] in-progress and stateless cases are NOT carved out (positive-only),
+  // so a genuine mid-stage quit is still nudged by the cap-bounded block.
+  // =========================================================================
+  test("(e) current stage awaiting-approval [?] allows the stop (human-wait carve-out)", () => {
+    const proj = makeProject();
+    // Engine still says run-stage (pending) — the carve-out is what releases,
+    // not the engine. The [?] row for the current slug is the positive signal.
+    seedActiveWithCheckbox(proj, "?", "requirements-analysis");
+    const r = runHook(proj, '{"stop_hook_active":false}', "run-stage");
+    expect(r.rc).toBe(0);
+    expect(r.out).toBe(""); // allowed: empty stdout, no decision:block
+  }, 30000);
+
+  test("(e) current stage revising [R] allows the stop (human-wait carve-out)", () => {
+    const proj = makeProject();
+    seedActiveWithCheckbox(proj, "R", "requirements-analysis");
+    const r = runHook(proj, '{"stop_hook_active":false}', "run-stage");
+    expect(r.rc).toBe(0);
+    expect(r.out).toBe("");
+  }, 30000);
+
+  test("(e) carve-out is positive-only — [-] in-progress still BLOCKS (cap is the only release)", () => {
+    const proj = makeProject();
+    // [-] in-progress is ALSO the normal 'stage work still owed' state — a
+    // blanket carve-out here would gut the hook. It must still block (today's
+    // behaviour); only the no-progress cap releases it. This pins that tier-1
+    // did NOT widen into in-progress.
+    seedActiveWithCheckbox(proj, "-", "requirements-analysis");
+    const r = runHook(proj, '{"stop_hook_active":false}', "run-stage");
+    expect(r.rc).toBe(0);
+    const parsed = JSON.parse(r.out) as { decision?: string };
+    expect(parsed.decision).toBe("block");
+  }, 30000);
+
+  // =========================================================================
+  // (f) TIER-2 PENDING-QUESTION CARVE-OUT — a mid-stage [-] stage with a
+  // questions file that has an UNANSWERED [Answer]: tag means the conductor is
+  // parked on the human (a clarifying question), so allow the stop. Strictly
+  // gated: (1) a blank/underscore [Answer]: must exist, (2) the workflow must
+  // NOT be in autonomous Construction (where the loop must keep running). Any
+  // miss → fall through to the cap-bounded block. This closes the [-] gap the
+  // tier-1 comment flagged as a follow-up, without touching autonomous runs.
+  // =========================================================================
+  test("(f) [-] with a blank [Answer]: question allows the stop (pending-question carve-out)", () => {
+    const proj = makeProject();
+    seedInProgressWithQuestions(proj, {
+      questions: "# Questions\n\n## Q1\nWhich URL scheme?\n[Answer]:\n",
+    });
+    const r = runHook(proj, '{"stop_hook_active":false}', "run-stage");
+    expect(r.rc).toBe(0);
+    expect(r.out).toBe(""); // allowed — a question is genuinely pending
+  }, 30000);
+
+  test("(f) [-] with an underscore-only [Answer]: also allows (treated as blank)", () => {
+    const proj = makeProject();
+    seedInProgressWithQuestions(proj, {
+      questions: "# Questions\n\n## Q1\nWhich URL scheme?\n[Answer]: ____\n",
+    });
+    const r = runHook(proj, '{"stop_hook_active":false}', "run-stage");
+    expect(r.rc).toBe(0);
+    expect(r.out).toBe("");
+  }, 30000);
+
+  test("(f) [-] with an ANSWERED question still BLOCKS (no pending question)", () => {
+    const proj = makeProject();
+    seedInProgressWithQuestions(proj, {
+      questions: "# Questions\n\n## Q1\nWhich URL scheme?\n[Answer]: A\n",
+    });
+    const r = runHook(proj, '{"stop_hook_active":false}', "run-stage");
+    expect(r.rc).toBe(0);
+    expect((JSON.parse(r.out) as { decision?: string }).decision).toBe("block");
+  }, 30000);
+
+  test("(f) [-] with NO questions file still BLOCKS (a genuine mid-stage quit)", () => {
+    const proj = makeProject();
+    seedInProgressWithQuestions(proj, {}); // no questions file written
+    const r = runHook(proj, '{"stop_hook_active":false}', "run-stage");
+    expect(r.rc).toBe(0);
+    expect((JSON.parse(r.out) as { decision?: string }).decision).toBe("block");
+  }, 30000);
+
+  test("(f) AUTONOMY GUARD — [-] + blank question BUT Construction Autonomy Mode=autonomous still BLOCKS", () => {
+    const proj = makeProject();
+    // The exact regression the autonomy gate prevents: in an autonomous
+    // Construction run the loop must keep moving even with a stray open
+    // question. A blank [Answer]: must NOT release the stop here.
+    seedInProgressWithQuestions(proj, {
+      slug: "code-generation",
+      phase: "construction",
+      autonomy: "autonomous",
+      questions: "# Questions\n\n## Q1\nEdge case?\n[Answer]:\n",
+    });
+    const r = runHook(proj, '{"stop_hook_active":false}', "run-stage");
+    expect(r.rc).toBe(0);
+    expect((JSON.parse(r.out) as { decision?: string }).decision).toBe("block");
+  }, 30000);
+
+  test("(f) gated Construction — [-] + blank question DOES allow (autonomy not granted)", () => {
+    const proj = makeProject();
+    // The complement: same Construction stage, but autonomy is 'gated' (or
+    // unset) → the human is in the loop, so a pending question releases.
+    seedInProgressWithQuestions(proj, {
+      slug: "code-generation",
+      phase: "construction",
+      autonomy: "gated",
+      questions: "# Questions\n\n## Q1\nEdge case?\n[Answer]:\n",
+    });
+    const r = runHook(proj, '{"stop_hook_active":false}', "run-stage");
+    expect(r.rc).toBe(0);
     expect(r.out).toBe("");
   }, 30000);
 

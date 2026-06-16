@@ -213,8 +213,8 @@ shapes.
 Both drivers run the same five per-Unit stages and converge against the same
 project check. The difference is purely how the parallel work is dispatched. The
 runaway backstop lives in the harness's 8-block **Stop-hook ceiling**
-(`core/hooks/aidlc-stop.ts:74`, exposed as
-`CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`, default 8), outside the swarm tool itself. The
+(`core/hooks/aidlc-stop.ts`, the `blockCap()` / `DEFAULT_BLOCK_CAP` pair, exposed
+as `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`, default 8), outside the swarm tool itself. The
 driver seam contract is in
 [Skill System § 6](../reference/17-skill-system.md#6-the-swarm-referee-the-driver-seam-and-the-bolt-dag).
 

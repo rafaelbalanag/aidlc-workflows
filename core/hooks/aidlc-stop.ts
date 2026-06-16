@@ -39,8 +39,28 @@
 //      cap we LET GO (allow the stop). When the workflow advances, the signature
 //      changes and the counter resets to 0, so a healthy loop is never throttled.
 //
-// The human-stop carve-out is FREE: Stop hooks do not fire on user interrupt
-// (Esc), so an Esc can never be trapped — no code needed here.
+// Three human-wait carve-outs keep the hook from punishing a turn that ended
+// *because* it is waiting on the human:
+//   1. The Esc interrupt is FREE: Stop hooks do not fire on user interrupt, so
+//      an Esc can never be trapped — no code needed for that case.
+//   2. The interactive GATE is not free: the Stop hook DOES fire when the
+//      conductor ends its turn to await an `AskUserQuestion` answer. At an
+//      approval gate ([?] awaiting-approval) or in the Request-Changes loop
+//      ([R] revising) the engine still returns a pending run-stage (the stage is
+//      in-flight, aidlc-orchestrate.ts:1161-1176), so without a carve-out the
+//      hook would block and spam the forwarding-loop nudge until the cap bleeds
+//      out. So when the current stage's checkbox is positively [?]/[R] we ALLOW
+//      the stop (isHumanWaitStop below). Positive-confirmation only and
+//      fail-open: stateless cases fall through to the cap-bounded block.
+//   3. A mid-stage CLARIFYING QUESTION parks the stage at [-] in-progress — the
+//      same state as a lazy quit, so [-] alone can't be carved out. But the
+//      conductor must write a `<slug>-questions.md` with blank [Answer]: tags
+//      before asking (stage-protocol.md §3); an unanswered tag is a positive
+//      signal that a question is pending, so we ALLOW the stop then too
+//      (isPendingQuestionStop below). Strictly gated: it never fires under
+//      autonomous Construction (the loop must keep running there), and any miss
+//      — no file, all answered, autonomous, or a read error — falls through to
+//      the cap-bounded block, so a genuine mid-stage quit is still nudged.
 //
 // No-op outside AIDLC. The frontmatter Stop matcher scopes this to the `aidlc`
 // skill, but we defend here too: with no active workflow (no aidlc-state.md
@@ -48,11 +68,13 @@
 // blocked. Any unexpected error also falls through to allow the stop — failing
 // open is the only safe failure mode for a hook that can otherwise trap a turn.
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   errorMessage,
+  getField,
   isoTimestamp,
+  parseCheckboxes,
   recordHookDrop,
   resolveProjectDirFromHook,
   stateFilePath,
@@ -131,13 +153,21 @@ function guardFilePath(): string {
   return join(projectDir, "aidlc-docs", ".aidlc-stop-hook", "block-count.json");
 }
 
+// The Current Stage slug from the state file. Factored from the regex the
+// signature and continuation both used inline (was duplicated at two sites);
+// returns "" when the field is absent. Matches `**Current Stage**:`, with or
+// without the bold markers / backticks, exactly as before.
+function currentStageSlug(stateContent: string): string {
+  const stageMatch = stateContent.match(/Current Stage\*{0,2}:?\s*`?([^\n`]*)`?/);
+  return (stageMatch?.[1] ?? "").trim();
+}
+
 // The current workflow position signature. Cheap, deterministic, and changes
 // exactly when a report advances the workflow. We read the state file's
 // Current Stage line and the audit length without importing the heavier state
 // parser — a substring + line-count is enough and cannot throw on odd content.
 function progressSignature(stateContent: string): string {
-  const stageMatch = stateContent.match(/Current Stage\*{0,2}:?\s*`?([^\n`]*)`?/);
-  const stage = (stageMatch?.[1] ?? "").trim();
+  const stage = currentStageSlug(stateContent);
   let auditLen = 0;
   try {
     const auditPath = join(projectDir, "aidlc-docs", "audit.md");
@@ -246,6 +276,126 @@ function resetGuard(): void {
     writeFileSync(guardFilePath(), JSON.stringify({ signature: "", count: 0 }), "utf-8");
   } catch {
     // Non-fatal — a stale streak only ever makes us release SOONER, never trap.
+  }
+}
+
+// --- Human-wait carve-out -----------------------------------------------------
+//
+// The block path punishes a conductor that quit mid-loop. But a conductor parked
+// at an approval gate or in the Request-Changes loop has ALSO ended its turn with
+// the engine still returning a pending directive — and from the engine's vantage
+// it looks identical, because a stage in `awaiting-approval` ([?]) or `revising`
+// ([R]) is still "in-flight", so `next` re-emits a run-stage for it
+// (aidlc-orchestrate.ts:1161-1176). Yet these states exist BECAUSE the human was
+// engaged: [?] only because a gate is open awaiting approve/reject, [R] only
+// because changes were just requested. Blocking there spams the forwarding-loop
+// nudge until the cap bleeds out — confusing and unprofessional at an
+// interactive gate.
+//
+// So when the CURRENT stage's checkbox is positively in one of those states,
+// allow the stop. This is the only safe widening of an allow: it can only ever
+// make the hook release MORE readily, never block more.
+//
+// One honest caveat on [R]: the row stays `revising` across the WHOLE rework
+// window (it flips back to [?] only when the conductor calls `revise`; see
+// stage-protocol.md:164). So [R] covers both the human-wait prompt ("what would
+// you like changed?") AND the autonomous rework edits that follow. Allowing the
+// stop on [R] means a conductor that quits mid-rework is not nudged — the same
+// [-]-style ambiguity we accept for in-progress, here scoped to a window the
+// human just opened. It is still only ever an allow (never blocks more), and the
+// dominant [R] experience is the human-wait prompt this carve-out targets.
+//
+// POSITIVE-CONFIRMATION ONLY. We allow ONLY when a checkbox row for the current
+// slug exists AND its state is [?]/[R]. No rows, slug not found, or any other
+// state → return false and fall through. [-] in-progress is NOT carved out HERE:
+// it is also the normal "stage work still owed" state, indistinguishable from a
+// lazy mid-stage quit by checkbox alone, so a blanket [-] carve-out would gut
+// the hook. (A mid-stage [-] stage with a genuinely pending question is handled
+// separately and conservatively by isPendingQuestionStop below, which keys off
+// the conductor's questions file rather than checkbox state.) Any parse error
+// falls through too: fail-open is the only safe failure mode for a hook that can
+// otherwise trap a turn.
+function isHumanWaitStop(stateContent: string): boolean {
+  try {
+    const slug = currentStageSlug(stateContent);
+    if (slug.length === 0) return false;
+    const row = parseCheckboxes(stateContent).find((c) => c.slug === slug);
+    return row?.state === "awaiting-approval" || row?.state === "revising";
+  } catch {
+    // Unparseable / odd content — fall through to decideBlock (never trap).
+    return false;
+  }
+}
+
+// --- Tier-2: pending mid-stage question carve-out -----------------------------
+//
+// A clarifying question asked mid-stage leaves the stage at [-] in-progress —
+// the SAME checkbox state as a conductor that lazily quit, so [-] alone cannot
+// be carved out (tier 1 deliberately left it to the cap). But there IS a
+// conductor-emitted artifact that disambiguates: stage-protocol.md §3 mandates a
+// `<slug>-questions.md` is created (Step 1) with blank `[Answer]:` tags before
+// the conductor asks, and every tag is filled before the stage proceeds (Step
+// 4). So a questions file with an UNANSWERED tag means a question is genuinely
+// pending — the conductor is parked on the human, exactly like a gate.
+//
+// Two strict gates make this safe (it can still only ever ALLOW, never block
+// more):
+//   1. POSITIVE-CONFIRMATION — allow only when a `<slug>-questions.md` under the
+//      current stage's dir (aidlc-docs/<phase>/<slug>/, mirroring memoryPathFor)
+//      has at least one `[Answer]:` tag that is empty or underscores-only. No
+//      file, all answered, or any read error → false (fall through to the cap).
+//   2. AUTONOMY GUARD — never fires under autonomous Construction
+//      (`Construction Autonomy Mode: autonomous`). There the loop MUST keep
+//      running unattended (gates are skipped; a failure halt-and-asks via its
+//      own path), so a stray open question must not release the stop and strand
+//      the run waiting on a human who was told they weren't needed.
+// Fail-open throughout: any error returns false and the cap-bounded block stands.
+
+// True when the `<slug>-questions.md` under the stage dir has an unanswered tag.
+// An `[Answer]:` line is "unanswered" when, after the colon, only whitespace or
+// underscores remain (stage-protocol.md:333 — "blank or contains only
+// underscores"). Scans the stage dir for any *-questions.md (the canonical name
+// is `<slug>-questions.md`, but matching the suffix is robust to the per-unit
+// Construction `{unit}` path segment the engine does not yet resolve).
+function hasPendingQuestion(slug: string, phase: string): boolean {
+  if (slug.length === 0 || phase.length === 0) return false;
+  const stageDir = join(projectDir, "aidlc-docs", phase.toLowerCase(), slug);
+  if (!existsSync(stageDir)) return false;
+  let files: string[];
+  try {
+    files = readdirSync(stageDir).filter((f) => f.endsWith("-questions.md"));
+  } catch {
+    return false;
+  }
+  for (const f of files) {
+    let body: string;
+    try {
+      body = readFileSync(join(stageDir, f), "utf-8");
+    } catch {
+      continue;
+    }
+    // An [Answer]: tag whose value (to end of line) is empty or underscores-only.
+    if (/\[Answer\]:[ \t]*_*[ \t]*$/m.test(body)) return true;
+  }
+  return false;
+}
+
+// The tier-2 carve-out decision: the current stage is [-] in-progress, a
+// question is pending, and we are NOT in autonomous Construction.
+function isPendingQuestionStop(stateContent: string): boolean {
+  try {
+    if (getField(stateContent, "Construction Autonomy Mode")?.trim() === "autonomous") {
+      return false; // autonomy guard — keep the loop alive
+    }
+    const slug = currentStageSlug(stateContent);
+    if (slug.length === 0) return false;
+    const row = parseCheckboxes(stateContent).find((c) => c.slug === slug);
+    if (row?.state !== "in-progress") return false; // positive [-] only
+    const phase = getField(stateContent, "Lifecycle Phase") ?? "";
+    return hasPendingQuestion(slug, phase);
+  } catch {
+    // Unparseable / odd content — fall through to decideBlock (never trap).
+    return false;
   }
 }
 
@@ -359,16 +509,45 @@ if (kind === "done") {
   allowStop();
 }
 
-// `ask` → the engine is waiting for human input (scope confirmation, gate
-// question, etc.). Allow the agent to end its turn so the user can respond.
+// `ask` → the engine is explicitly waiting for human input (resume re-entry or
+// freeform scope confirmation; aidlc-orchestrate.ts:1040,1105). Allow the turn
+// to end so the user can respond, rather than re-feeding the loop.
 if (kind === "ask") {
   allowStop();
 }
 
-// Stage is awaiting human approval ([?] state) — the agent presented the gate
-// and should stop to let the user decide. Allow the stop.
-const awaitingMatch = stateContent.match(/\[\?]\s/);
-if (awaitingMatch && kind === "run-stage") {
+// Human-wait carve-out: the engine returns a pending directive, but the current
+// stage is positively at [?] awaiting-approval or [R] revising — the conductor
+// is correctly parked on the human (an approval gate or the Request-Changes
+// loop), with genuinely nothing to do without their input. Allow the stop
+// instead of spamming the forwarding-loop nudge. Positive-confirmation only and
+// fail-open (see isHumanWaitStop): any other state, no checkbox row, or a parse
+// error falls through to the cap-bounded block below, unchanged. (This is the
+// current-stage-scoped successor to the broad `[?]` substring match that landed
+// in 679153d; scoping to the current slug and adding [R] is strictly safer.)
+if (isHumanWaitStop(stateContent)) {
+  recordHookDrop(
+    projectDir,
+    HOOK_NAME,
+    `current stage ${currentStageSlug(stateContent)} is awaiting approval or being revised; allowing the stop (human-wait carve-out)`,
+  );
+  allowStop();
+}
+
+// Pending-question carve-out (tier 2): the current [-] stage has an unanswered
+// question in its `<slug>-questions.md`, and we are NOT in autonomous
+// Construction — so the conductor is parked on the human's answer to a
+// mid-stage clarifying question. Allow the stop instead of nudging. Strictly
+// gated and fail-open (see isPendingQuestionStop): any other state, no open
+// question, an autonomous run, or a read error falls through to the cap-bounded
+// block below, so a genuine mid-stage quit (and every autonomous run) is
+// unaffected.
+if (isPendingQuestionStop(stateContent)) {
+  recordHookDrop(
+    projectDir,
+    HOOK_NAME,
+    `current stage ${currentStageSlug(stateContent)} has an unanswered question; allowing the stop (pending-question carve-out)`,
+  );
   allowStop();
 }
 
@@ -387,6 +566,4 @@ if (!shouldBlock) {
 }
 
 // Within budget — block the stop and re-feed the pending work.
-const stageMatch = stateContent.match(/Current Stage\*{0,2}:?\s*`?([^\n`]*)`?/);
-const stage = (stageMatch?.[1] ?? "").trim();
-blockStop(continuationReason(kind, stage));
+blockStop(continuationReason(kind, currentStageSlug(stateContent)));

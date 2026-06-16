@@ -328,6 +328,18 @@ After collecting answers, analyze ALL responses for:
 If ANY ambiguity found: create follow-up questions and resolve before proceeding.
 **When in doubt, ask.** Incomplete answers lead to poor designs.
 
+**Write every pending question into the questions file before you end the turn —
+including follow-ups and chat-mode questions.** The questions file (with blank
+`[Answer]:` tags for anything still open) is not just the audit record: the
+forwarding-loop **Stop hook** reads it to tell a genuine human-wait (a question
+you asked and are waiting on) apart from a stage you abandoned mid-work. If you
+ask the user something but leave no blank `[Answer]:` tag in `<slug>-questions.md`,
+the hook cannot see the question is pending and will nudge you to keep going
+(and on a non-interactive run the loop is only bounded by the block cap). So:
+add the open question to the file with a blank tag *before* you stop to wait,
+in every mode (guided, self-guided, chat). This does not apply in autonomous
+Construction, where the loop is meant to keep running without you.
+
 ### Error handling for invalid/missing answers
 When processing user answers from question files:
 - **Missing answers**: If any [Answer]: tag is still blank or contains only underscores, list the unanswered questions and ask the user to complete them before proceeding.

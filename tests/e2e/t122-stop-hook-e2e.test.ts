@@ -1,7 +1,10 @@
 // covers: hook:aidlc-stop
 //
 // t122-stop-hook-e2e.test.ts — SDK-harness port of
-// tests/e2e/t122-stop-hook-e2e.sh (plan 6). WORKFLOW-TIER end-to-end
+// tests/e2e/t122-stop-hook-e2e.sh (the .sh's TAP plan was 6 assertions; this
+// port carried them as 4 test() blocks, and the human-wait carve-out adds a
+// 5th — the (7)-labelled real-engine case below, numbered to continue the .sh
+// assertion map, not the test()-block count). WORKFLOW-TIER end-to-end
 // enforcement of the Stop hook aidlc-stop.ts — the framework's FIRST
 // flow-altering hook. The feature-tier twin t121-stop-hook-enforce.test.ts
 // proves the hook's block/done/guard LOGIC against a MOCK engine; THIS file
@@ -60,6 +63,23 @@
 //          can never trap the session even with the directive genuinely pending.
 //          Deterministically confirmed on this fixture (sig
 //          feedback-optimization::2, drop line written).
+//   7 human-wait carve-out against the REAL engine (NEW — no .sh predecessor;
+//     t121 owns the exhaustive [?]/[R]/[-] matrix)
+//       -> seed state-final-stage but flip the current stage's row from [-] to
+//          [?] awaiting-approval: the real engine STILL emits a pending
+//          run-stage (the [?] stage is in-flight, aidlc-orchestrate.ts
+//          :1161-1176), but the hook ALLOWS the stop (empty stdout, exit 0).
+//          The complement of test 4 on the SAME fixture — only the checkbox
+//          state differs and the outcome flips block -> allow. This is the
+//          gate-spam fix proven end-to-end.
+//   8 pending-question (tier 2) carve-out against the REAL engine (NEW)
+//       -> keep the final stage [-] in-progress (engine emits a pending
+//          run-stage, as test 4 proved BLOCKS), but write a
+//          <slug>-questions.md with a blank [Answer]: tag under the stage dir:
+//          the hook ALLOWS the stop (empty stdout, exit 0). Same [-] fixture as
+//          test 4, the open question is the only difference, and it flips
+//          block -> allow. t121 owns the autonomy-guard / answered / no-file
+//          matrix.
 //
 // The human-stop carve-out (Esc) needs no test: SPIKE 1 confirmed Stop hooks
 // do not fire on user interrupt (the .sh's closing note, kept).
@@ -88,6 +108,7 @@ import { join } from "node:path";
 import { assertToolResultContains } from "../harness/assert.ts";
 import {
   cleanupTestProject,
+  sedReplaceInFile,
   setupIntegrationProject,
 } from "../harness/fixtures.ts";
 import { driveAidlc } from "../harness/sdk-drive.ts";
@@ -304,6 +325,90 @@ describe("t122 Stop hook end-to-end — real hook, real engine (sdk+cli)", () =>
         // The drop record documents the release (aidlc-stop.ts:364-371).
         const drops = readFileSync(join(proj, DROPS_REL), "utf-8");
         expect(drops).toContain(DROP_RECORD);
+      } finally {
+        cleanupTestProject(proj);
+      }
+    },
+    HOOK_SPAWN_TIMEOUT_MS + 30_000,
+  );
+
+  // =========================================================================
+  // (7) HUMAN-WAIT CARVE-OUT against the REAL engine. The complement of test
+  // (4): test (4) seeds the final stage [-] in-progress and proves the real
+  // hook still BLOCKS the pending run-stage. Here we flip that SAME current
+  // stage to [?] awaiting-approval — a conductor parked at the approval gate —
+  // and prove the real hook now ALLOWS the stop even though the real engine
+  // STILL emits a pending run-stage for feedback-optimization (a [?] stage is
+  // in-flight, so aidlc-orchestrate.ts:1161-1176 re-emits run-stage). This is
+  // the gate-spam fix proven end-to-end: same fixture, same real engine, only
+  // the checkbox state differs, and the outcome flips block -> allow.
+  // Deterministic (no model in the loop). t121 owns the [?]/[R]/[-] matrix.
+  // =========================================================================
+  test(
+    "(real engine) the human-wait carve-out allows a pending stop at an approval gate: current stage [?] -> empty stdout, exit 0",
+    () => {
+      const proj = setupIntegrationProject({
+        withState: "state-final-stage.md",
+        withAudit: true,
+      });
+      try {
+        // Flip the current stage's checkbox from [-] in-progress to [?]
+        // awaiting-approval in the seeded state. The fixture's row is
+        // `- [-] feedback-optimization — EXECUTE` (state-final-stage.md:86).
+        sedReplaceInFile(
+          join(proj, "aidlc-docs", "aidlc-state.md"),
+          `- [-] ${PENDING_STAGE} — EXECUTE`,
+          `- [?] ${PENDING_STAGE} — EXECUTE`,
+        );
+        const r = runRealHook(proj, '{"stop_hook_active":false}');
+        // The engine STILL returns a pending run-stage (the stage is in-flight
+        // at [?]); the carve-out is what releases. Allowed: empty stdout, 0.
+        expect(r.rc).toBe(0);
+        expect(r.out).toBe("");
+      } finally {
+        cleanupTestProject(proj);
+      }
+    },
+    HOOK_SPAWN_TIMEOUT_MS + 30_000,
+  );
+
+  // =========================================================================
+  // (8) PENDING-QUESTION carve-out (tier 2) against the REAL engine. The
+  // fixture's final stage stays [-] in-progress (so the engine genuinely emits
+  // a pending run-stage), but we write a `<slug>-questions.md` with a blank
+  // [Answer]: tag under the stage dir — a mid-stage clarifying question. The
+  // real hook must ALLOW the stop (empty stdout, exit 0). The complement of
+  // test 4: SAME [-] fixture that BLOCKS without a question now releases WITH
+  // one. Deterministic. t121 owns the autonomy-guard / answered / no-file matrix.
+  // =========================================================================
+  test(
+    "(real engine) a pending mid-stage question allows the stop: [-] + blank [Answer]: -> empty stdout, exit 0",
+    () => {
+      const proj = setupIntegrationProject({
+        withState: "state-final-stage.md",
+        withAudit: true,
+      });
+      try {
+        // state-final-stage.md: Lifecycle Phase OPERATION, Current Stage
+        // feedback-optimization at [-]. The hook derives the stage dir as
+        // aidlc-docs/operation/feedback-optimization/ (memoryPathFor shape).
+        const qDir = join(
+          proj,
+          "aidlc-docs",
+          "operation",
+          PENDING_STAGE,
+        );
+        mkdirSync(qDir, { recursive: true });
+        writeFileSync(
+          join(qDir, `${PENDING_STAGE}-questions.md`),
+          "# Questions\n\n## Q1\nWhich rollback threshold?\n[Answer]:\n",
+          "utf-8",
+        );
+        const r = runRealHook(proj, '{"stop_hook_active":false}');
+        // [-] stage => real engine emits a pending run-stage (test 4 proved it
+        // BLOCKS without a question); the blank [Answer]: now releases it.
+        expect(r.rc).toBe(0);
+        expect(r.out).toBe("");
       } finally {
         cleanupTestProject(proj);
       }
