@@ -164,6 +164,8 @@ The engine reads the compiled `data/stage-graph.json` directly for all routing; 
 ## Key Principles
 
 - **Adaptive scope**: Scope determines which stages execute and at what depth. The engine owns the resolution; you run the stages it hands you.
+- **STAGE RITUAL IS ATOMIC**: Once a stage starts, EVERY step fires: questions → artifact → reviewer (§12a, if declared) → learnings (§13) → gate. No step is skippable. "Skip to stage X" skips INTERMEDIATE stages, NOT the target stage's ritual. Complete the current stage fully (including learnings) before jumping.
+- **AUTONOMY IS NEVER INFERRED**: A user saying "go with recommended" for one stage is a one-time instruction for THAT stage. The next stage starts fresh. NEVER carry forward autonomy. NEVER self-answer questions without explicit permission for THIS specific stage.
 - **User control**: The user can override any stage decision at any approval gate.
 - **11 domain experts**: Each stage leverages the appropriate agent persona; personas load inline from `.kiro/agents/aidlc-<role>-agent.md` for 30 of 32 stages.
 - **Approval gates**: Every stage except the bootstrap initialization stages presents an approval gate.
