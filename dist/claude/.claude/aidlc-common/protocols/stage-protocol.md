@@ -19,6 +19,8 @@ Before and during EVERY stage, verify:
 3. [ ] **Never summarize User Input** — use exact option labels. For test-run auto-selections, include `--test-run` on the command so the audit entry carries `Test-Run=true`. (§2, §3)
 4. [ ] **Task transitions + state sync** — Mark previous task `completed`, then `TaskUpdate({ ..., status: "in_progress", activeForm: "Running [Stage] [slug]" })`. The `[slug]` suffix triggers the PostToolUse hook that syncs the state file. `aidlc-orchestrate.ts report --stage <slug> --result approved` auto-advances to the next in-scope stage (or completes the workflow on the final stage) — do NOT call `advance` separately after approval. (§4)
 5. [ ] **Test-run mode check** — if TEST_RUN_MODE, skip structured questions and call `aidlc-orchestrate.ts report --stage <slug> --result approved --user-input "Approve (test-run)" --test-run`. The `--test-run` flag tags the audit entry so it can be filtered later.
+6. [ ] **Stage ritual is ATOMIC** — once a stage starts, EVERY step in its protocol fires: questions → artifact → reviewer (if declared) → learnings → gate. No step is skippable based on inferred user intent. "Skip to stage X" means skip INTERMEDIATE stages, NOT shortcut the TARGET stage's ritual. If a user jumps forward from a stage at its gate, the current stage's learnings ritual (§13) MUST fire before the jump executes.
+7. [ ] **Autonomy is NEVER inferred** — a user saying "go with recommended" or "pick the best answers" for one stage is a ONE-TIME instruction for THAT stage only. It does NOT create a standing rule. The next stage starts fresh with its declared autonomy mode. The ONLY way to get autonomous mode is: (a) the directive explicitly carries `autonomy: autonomous`, OR (b) the human explicitly says "run this autonomous" for the specific stage being proposed. NEVER carry forward an autonomy inference from a previous stage. NEVER self-answer questions without explicit permission for THIS stage.
 
 ---
 
@@ -852,6 +854,49 @@ If a Task tool call fails (timeout, error, or returns truncated/incomplete outpu
 ## 12. Phase Boundary Verification
 
 > See `stage-protocol-governance.md` §13 — load at phase transitions to run traceability verification. Capturing corrections as durable rules is the §13 Learnings Ritual below, not a separate guardrail flow.
+
+## 12a. Reviewer Invocation
+
+If the `run-stage` directive includes a `reviewer` field (non-null), the orchestrator MUST invoke the reviewer as a **separate sub-agent** after the stage body produces its artifacts and before the §13 learnings ritual.
+
+### Flow
+
+1. **Invoke reviewer sub-agent.** Delegate to the reviewer agent named in `directive.reviewer`. Pass:
+   - The stage definition file path (`directive.stage_file`)
+   - The Q&A file path (e.g., `aidlc-docs/<phase>/<stage>/<stage>-questions.md`)
+   - All artifact file paths produced by the stage (the `produces` artifacts)
+   - The validation tools list from the stage definition's frontmatter (if any)
+
+   Do NOT pass: `memory.md` (builder's diary) or any plan/reasoning files. The reviewer forms independent judgment.
+
+2. **Reviewer executes.** The reviewer sub-agent:
+   - Reads the stage definition to understand what SHOULD have been produced
+   - Reads the Q&A to understand context and constraints
+   - Reads the artifact(s) to evaluate what WAS produced
+   - Runs any validation tools listed (via shell) and includes results in findings
+   - Appends a `## Review` section to the primary artifact file with verdict: READY or NOT-READY
+
+3. **Read verdict.** After the reviewer returns, read the `## Review` section from the primary artifact:
+   - **READY** → proceed to §13 learnings ritual then the approval gate
+   - **NOT-READY** and `reviewIterations < reviewer_max_iterations` (default 2):
+     - Increment review iteration counter
+     - Re-invoke the stage's lead agent (inline or subagent per `directive.mode`) with the artifact + review findings. The builder addresses the findings and updates the artifact.
+     - Return to step 1 (re-invoke reviewer)
+   - **NOT-READY** and iterations exhausted:
+     - Proceed to approval gate with unresolved findings noted:
+       "Reviewer found issues after N iterations. Presenting with unresolved findings for your decision."
+
+### What the reviewer does NOT do
+
+- Does not modify the artifact beyond appending `## Review`
+- Does not communicate with the builder directly (all mediated by orchestrator)
+- Does not access the builder's plan.md or memory.md
+- Does not block the workflow — the human always gets final say at the gate
+- Does not fire for stages without a `reviewer` field in the directive
+
+### Test-Run Mode
+
+Under `--test-run`, the reviewer step is **still executed** (it validates artifact quality even in CI). However, if the verdict is NOT-READY after max iterations, the workflow auto-advances (same as gate auto-approval in test-run mode).
 
 ## 13. Learnings Ritual
 
