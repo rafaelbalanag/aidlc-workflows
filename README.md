@@ -1,12 +1,13 @@
 # AI-DLC — one core, many harnesses
 
-A native implementation of the **AI-DLC methodology** (AI-Driven Development Life Cycle) that runs on **many harnesses from one source of truth** — today Claude Code, Kiro IDE, and Codex CLI, and any capable harness you port it to. Run a full software-development lifecycle — 11 domain-expert agents working through a 32-stage workflow, and you approve every gate — in whichever harness you use.
+A native implementation of the **AI-DLC methodology** (AI-Driven Development Life Cycle) that runs on **many harnesses from one source of truth** — today Claude Code, Kiro IDE, Kiro CLI, and Codex CLI, and any capable harness you port it to. Run a full software-development lifecycle — 11 domain-expert agents working through a 32-stage workflow, and you approve every gate — in whichever harness you use.
 
 The methodology lives once, in a harness-neutral `core/`; each harness adds a thin surface that decides how it shows up on that harness. So you edit the methodology in one place, and every harness distribution is generated from it — no harness gets special treatment. (See [Repository layout](#repository-layout) for how the pieces fit together.)
 
 ![version](https://img.shields.io/badge/version-0.7.11-blue)
 ![license](https://img.shields.io/badge/license-MIT--0-green)
 ![Kiro IDE](https://img.shields.io/badge/harness-Kiro%20IDE-orange)
+![Kiro CLI](https://img.shields.io/badge/harness-Kiro%20CLI-orange)
 ![Claude Code](https://img.shields.io/badge/harness-Claude%20Code-orange)
 ![Codex CLI](https://img.shields.io/badge/harness-Codex%20CLI-orange)
 
@@ -38,20 +39,21 @@ Ad-hoc AI coding works until the project gets real. Then context drifts between 
 
 ## Methodology and implementation
 
-**AI-DLC is a methodology** — a structured, gated approach to AI-driven software development, defined by AWS (see the [blog post](https://aws.amazon.com/blogs/devops/ai-driven-development-life-cycle/) and [method paper](https://prod.d13rzhkk8cj2z0.amplifyapp.com/) under [References](#references)). **This repository is its native, multi-harness implementation** — the methodology rendered as skills, agents, hooks, and tools from one harness-neutral `core/`, so it runs natively inside Claude Code, Kiro IDE, Codex CLI, or any capable harness you port it to. The methodology is the *what*; each harness distribution is the *how* for one runtime, and every distribution is generated from the same source.
+**AI-DLC is a methodology** — a structured, gated approach to AI-driven software development, defined by AWS (see the [blog post](https://aws.amazon.com/blogs/devops/ai-driven-development-life-cycle/) and [method paper](https://prod.d13rzhkk8cj2z0.amplifyapp.com/) under [References](#references)). **This repository is its native, multi-harness implementation** — the methodology rendered as skills, agents, hooks, and tools from one harness-neutral `core/`, so it runs natively inside Claude Code, Kiro IDE, Kiro CLI, Codex CLI, or any capable harness you port it to. The methodology is the *what*; each harness distribution is the *how* for one runtime, and every distribution is generated from the same source.
 
 ## Pick your harness
 
 | Harness | Install (copy into your project) | Invoke | Install & usage guide |
 | --- | --- | --- | --- |
-| **Kiro IDE** | `dist/kiro-ide/.kiro/` → `<project>/.kiro/` (+ `dist/kiro-ide/AGENTS.md`) | `/aidlc` | [Quick Start](#quick-start) below. |
+| **Kiro IDE** | `dist/kiro-ide/.kiro/` → `<project>/.kiro/` (+ `dist/kiro-ide/AGENTS.md`) | `/aidlc` | [Quick Start](#quick-start) below + [Running AI-DLC on Kiro IDE](docs/guide/harnesses/kiro-ide.md). |
+| **Kiro CLI** (≥ 2.6) | `dist/kiro/.kiro/` → `<project>/.kiro/` (+ `dist/kiro/AGENTS.md`) | `/aidlc` | [Quick Start](#quick-start) below + [Running AI-DLC on Kiro CLI](docs/guide/harnesses/kiro-cli.md). |
 | **Claude Code** | `dist/claude/.claude/` → `<project>/.claude/` | `/aidlc` | [Quick Start](#quick-start) below + [Getting Started](docs/guide/01-getting-started.md). |
 | **Codex CLI** (≥ 0.139.0) | `dist/codex/` → `<project>/` (`.codex/` + `.agents/` + `AGENTS.md`) | `$aidlc` (or `/skills` → aidlc) | [Quick Start](#quick-start) below + [AI-DLC on Codex CLI](docs/guide/harnesses/codex-cli.md). |
 
 The deterministic engine — state machine, audit log, and the referee that coordinates parallel agents — is byte-identical across every harness; only the shell differs. Each section in the [Quick Start](#quick-start) installs one harness end to end, and its guide above goes deeper on prerequisites and differences.
 
 > [!NOTE]
-> A Kiro CLI distribution (`dist/kiro/`) also builds from this source, but it is **not part of the current launch** — the IDE-targeted `dist/kiro-ide/` is the supported Kiro distribution for now.
+> AI-DLC on Kiro (IDE or CLI) works best with **Claude Opus 4.8**, which requires a **paid Kiro plan**. On weaker models the conductor may skip optional stage steps (reviewer pass, learnings ritual) or rush approval gates.
 
 ## Recommended Model
 
@@ -104,7 +106,32 @@ cp dist/kiro-ide/AGENTS.md your-project/AGENTS.md   # merge if you already have 
 Open `your-project/` in Kiro IDE. The install ships `.kiro/settings/cli.json` with `chat.defaultAgent` set to `aidlc` and registers the framework hooks as `.kiro/hooks/*.kiro.hook` files (the IDE's hook mechanism). In the chat panel, run `/aidlc --doctor` to verify, then `/aidlc <description>` to start.
 
 > [!NOTE]
-> AI-DLC on Kiro works best with **Claude Opus 4.8**. On weaker models the conductor may skip optional stage steps (reviewer pass, learnings ritual) or rush approval gates.
+> AI-DLC on Kiro works best with **Claude Opus 4.8**, which requires a **paid Kiro plan**. On weaker models the conductor may skip optional stage steps (reviewer pass, learnings ritual) or rush approval gates.
+
+</details>
+
+<details>
+<summary><b>Kiro CLI</b></summary>
+
+**1. Install Kiro CLI** (≥ 2.6) and log in:
+
+```bash
+kiro-cli --version   # confirm ≥ 2.6
+kiro-cli login
+```
+
+**2. Set up your project**
+
+```bash
+cp -r dist/kiro/.kiro your-project/.kiro
+cp dist/kiro/AGENTS.md your-project/AGENTS.md   # merge if you already have one
+cd your-project && kiro-cli chat
+```
+
+The install ships `.kiro/settings/cli.json` with `chat.defaultAgent` set to `aidlc`, so `/aidlc` is active by default. Inside the session, run `/aidlc --doctor` to verify, then `/aidlc <description>` to start. The [Kiro CLI guide](docs/guide/harnesses/kiro-cli.md) has the full prerequisites and harness differences.
+
+> [!NOTE]
+> AI-DLC on Kiro works best with **Claude Opus 4.8**, which requires a **paid Kiro plan**. On weaker models the conductor may skip optional stage steps (reviewer pass, learnings ritual) or rush approval gates.
 
 </details>
 
@@ -207,7 +234,7 @@ aidlc-claude/
 ├── harness/                    # thin per-harness authored surfaces — small, divergent by design
 │   ├── claude/                 #   manifest.ts · orchestrator skill · settings.json · onboarding fills
 │   ├── kiro-ide/               #   manifest.ts · orchestrator · agent JSONs · .kiro.hook files · settings · onboarding fills
-│   ├── kiro/                   #   manifest.ts · orchestrator · agent JSONs · settings · onboarding fills (CLI — not in current launch)
+│   ├── kiro/                   #   manifest.ts · orchestrator · agent JSONs · settings · onboarding fills (CLI — agent-JSON hooks)
 │   └── codex/                  #   manifest.ts · emit.ts (Codex-only emissions) · orchestrator · hooks adapter
 │
 ├── scripts/
@@ -219,7 +246,7 @@ aidlc-claude/
 ├── dist/
 │   ├── claude/.claude/                       # what Claude Code users copy
 │   ├── kiro-ide/{AGENTS.md, .kiro/}          # what Kiro IDE users copy
-│   ├── kiro/{AGENTS.md, .kiro/}              # Kiro CLI build (not in current launch)
+│   ├── kiro/{AGENTS.md, .kiro/}              # what Kiro CLI users copy
 │   └── codex/{AGENTS.md, .agents/, .codex/}  # what Codex CLI users copy
 │
 │  ─────────── SUPPORTING ───────────

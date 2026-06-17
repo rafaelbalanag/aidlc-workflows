@@ -1,10 +1,11 @@
 # Running AI-DLC on Kiro CLI
 
 > [!NOTE]
-> The Kiro CLI distribution is **not part of the current launch**. For Kiro,
-> the supported distribution is the IDE-targeted one — see
-> [Running AI-DLC on Kiro IDE](kiro-ide.md). This chapter is retained for the
-> CLI build that still generates from the same source.
+> AI-DLC on Kiro CLI works best with **Claude Opus 4.8**, which requires a
+> **paid Kiro plan**. On weaker models the conductor may skip optional stage
+> steps (reviewer pass, learnings ritual) or rush approval gates. The
+> IDE-targeted distribution is documented separately in
+> [Running AI-DLC on Kiro IDE](kiro-ide.md).
 
 One of the framework's harnesses: `dist/kiro/` runs the same AI-DLC
 methodology on [Kiro CLI](https://kiro.dev/docs/cli/). One deterministic core
