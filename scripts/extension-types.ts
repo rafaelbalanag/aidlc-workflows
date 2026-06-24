@@ -32,6 +32,11 @@ export type ExtensionContributes = {
   rules?: string;
   sensors?: string;
   knowledge?: string;
+  // tools — a dir of CLI tool files (e.g. a bundle's own sensor scripts) merged
+  // into the harness tools dir (.claude/tools/) so they sit beside the dispatcher
+  // and resolve+run. The one channel by which a bundle ships a RUNNABLE sensor
+  // (a sensor manifest alone is discoverable but its script must live in tools/).
+  tools?: string;
   // overlays — the per-stage contribution seam (§4): a dir of contribution files
   // (contributions/<phase>/<slug>.md) that additively modify EXISTING stages
   // (add produces/consumes/sensors/required_sections + append prose fragments).

@@ -53,9 +53,12 @@ export default extension;
 ```
 
 `contributes` keys map to core subtrees (`stages`, `agents`, `scopes`, `rules`,
-`sensors`, `knowledge`) — those are copied in alongside core at build. `overlays`
-is special: it is **not** copied; it holds the per-stage contributions consumed
-by the merge pass.
+`sensors`, `knowledge`, `tools`) — those are copied in alongside core at build.
+`tools` lands CLI scripts in the harness `tools/` dir so a bundle can ship a
+**runnable sensor** (its manifest in `sensors/` + its script in `tools/` — a
+manifest alone is discoverable but its script must live in `tools/` to resolve).
+`overlays` is special: it is **not** copied; it holds the per-stage
+contributions consumed by the merge pass.
 
 ## 2. Add a new stage
 

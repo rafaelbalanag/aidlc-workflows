@@ -527,6 +527,7 @@ const CONTRIBUTES_DST: Record<string, string> = {
   rules: "rules",
   sensors: "sensors",
   knowledge: "knowledge",
+  tools: "tools",
 };
 
 function discoverExtensions(): string[] {

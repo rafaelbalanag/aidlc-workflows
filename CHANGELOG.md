@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.0] - 2026-06-24
+
+Ships **`test-pro`**, the first large extension bundle — full-featured testing — and the `contributes.tools` channel that lets a bundle ship runnable tools. No core/ runtime change; base `dist/<harness>/` trees stay byte-identical (the bundle is a committed delta under `dist/<harness>/extensions/test-pro/`). Re-copy your `dist/<harness>/` to pick up the regenerated tools; the bundle activates under enterprise/feature scopes.
+
+* **`test-pro` bundle** (`extensions/test-pro/`): enriches the pipeline for comprehensive, traceable test coverage — unit (branch+coverage), functional, integration, regression, edge (off-by-one / ±min·max), and API positive+negative. Delivered as 4 §4 contributions (nfr-requirements, nfr-design, build-and-test, performance-validation), 2 new stages (`test-pro-integration` cross-unit integration in construction; `test-pro-full-suite` deployed-env suite execution in operation), and 2 advisory sensors (`coverage-threshold`, `requirement-coverage`) that read machine-readable JSON results the build-and-test contribution emits.
+* **`contributes.tools`** — a bundle can now ship CLI tool scripts (e.g. its own sensor tools) that merge into the harness `tools/` dir so they resolve and run. This is what makes a bundle sensor runnable, not just discoverable.
+* **Advisory only:** the two test-pro sensors REPORT coverage + requirement-traceability; they do not block the build (the framework has no blocking sensor severity yet — tracked separately). The build-and-test stage prose drives meeting targets.
+* No change to core stages, agents, or the four framework sensors.
+
 ## [2.0.9] - 2026-06-24
 
 Richer §4 contribution fragment anchors (issue #430 workstream B) plus the additive-only boundary made explicit. No runtime behaviour change; base trees byte-identical.
