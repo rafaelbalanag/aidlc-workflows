@@ -121,13 +121,28 @@ def _patch_trusted_agents(kiro_dir: Path) -> None:
         data = json.loads(agent_file.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return
+    dirty = False
     sub = data.setdefault("toolsSettings", {}).setdefault("subagent", {})
     trusted = sub.setdefault("trustedAgents", [])
     added = [a for a in _REVIEWER_AGENTS if a not in trusted]
     if added:
         trusted.extend(added)
-        agent_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        dirty = True
         _log(f"Trusted reviewer subagents (headless auto-approve): {', '.join(added)}")
+    # CRITICAL for headless: trustedAgents only governs WHICH agents may run once
+    # the `subagent` TOOL itself is permitted. The shipped allowedTools omits
+    # `subagent` (and `execute_bash`/`fs_write`), so under --no-interactive the
+    # tool-permission prompt hangs with no TTY before trustedAgents is even
+    # consulted. Add the tools a gated stage needs to allowedTools in the
+    # workspace copy so dispatch auto-approves. Shipped dist is never touched.
+    allowed = data.setdefault("allowedTools", [])
+    for tool in ("subagent", "execute_bash", "fs_write"):
+        if tool in data.get("tools", []) and tool not in allowed:
+            allowed.append(tool)
+            dirty = True
+    if dirty:
+        agent_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        _log(f"Patched allowedTools for headless auto-approve: {allowed}")
 
 
 class KiroCLIAdapter(CLIAdapter):
@@ -202,6 +217,15 @@ class KiroCLIAdapter(CLIAdapter):
                     shutil.rmtree(kiro_dest)
                 shutil.copytree(config.kiro_dist_path, kiro_dest)
                 _log(f"Installed .kiro/ distribution from {config.kiro_dist_path}")
+
+                # Overlay any extension bundle deltas onto .kiro/ (as a consumer
+                # installs a bundle). Each bundle path points at the bundle's
+                # .kiro/ subtree (or a dir containing one).
+                for bundle in config.bundle_paths:
+                    bundle_kiro = bundle / ".kiro"
+                    src = bundle_kiro if bundle_kiro.is_dir() else bundle
+                    shutil.copytree(src, kiro_dest, dirs_exist_ok=True)
+                    _log(f"Overlaid bundle from {src}")
 
                 # Trust reviewer subagents so headless gated stages don't hang on
                 # an unanswerable permission prompt (patches the local copy only).

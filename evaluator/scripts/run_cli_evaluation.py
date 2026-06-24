@@ -251,6 +251,15 @@ def main() -> None:
         help="Disable --test-run; gates surface to the human simulator instead of auto-approving.",
     )
     parser.add_argument(
+        "--bundle",
+        action="append",
+        default=[],
+        help="Extension bundle to overlay onto the installed harness (repeatable). "
+        "A bundle NAME resolves to dist/claude/extensions/<name>/.claude; an absolute "
+        "path is used as-is. claude-cli only. Lets the eval exercise an extension "
+        "(e.g. --bundle test-pro --scope enterprise).",
+    )
+    parser.add_argument(
         "--verbose",
         "-v",
         action="store_true",
@@ -394,6 +403,21 @@ def main() -> None:
     else:
         print("  Codex distribution: not found")
 
+    # Resolve --bundle entries: a NAME -> dist/<harness>/extensions/<name>/ (the
+    # bundle delta root; the adapter picks the .claude/.kiro/.codex+.agents subtree
+    # from within it). An absolute/existing path is used as-is. <harness> is the
+    # CLI name minus the "-cli" suffix (claude-cli -> claude, etc.).
+    harness = args.cli.removesuffix("-cli")
+    bundle_paths: list[Path] = []
+    for b in args.bundle:
+        p = Path(b)
+        if p.is_absolute() or p.exists():
+            bundle_paths.append(p.resolve())
+        else:
+            bundle_paths.append((git_root / "dist" / harness / "extensions" / b).resolve())
+    for bp in bundle_paths:
+        print(f"  Bundle overlay: {bp}")
+
     result, eval_rc = run_cli_evaluation(
         adapter=adapter,
         vision_path=vision_path,
@@ -415,6 +439,7 @@ def main() -> None:
         codex_dist_path=codex_dist_path,
         scope=args.scope,
         test_run=not args.no_test_run,
+        bundle_paths=bundle_paths,
     )
 
     if not result.success:

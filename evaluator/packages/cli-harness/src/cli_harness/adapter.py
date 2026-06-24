@@ -41,6 +41,12 @@ class AdapterConfig:
     # When True, pass `--test-run` so the engine auto-approves gates and the
     # workflow runs fully autonomously. Shared by both adapters.
     test_run: bool = True
+    # Extension bundle delta dirs to OVERLAY onto the installed harness tree
+    # (e.g. dist/claude/extensions/test-pro/.claude). Each is copied over the
+    # base .claude/ after the base install, exactly as a consumer installs a
+    # bundle. Empty = base-only (the default). Lets the eval exercise an
+    # extension end-to-end. Claude adapter honors these today.
+    bundle_paths: list[Path] = field(default_factory=list)
 
 
 @dataclass

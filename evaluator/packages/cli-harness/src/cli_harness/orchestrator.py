@@ -128,6 +128,7 @@ def run_cli_evaluation(
     codex_dist_path: Path | None = None,
     scope: str = "mvp",
     test_run: bool = True,
+    bundle_paths: list[Path] | None = None,
 ) -> tuple[AdapterResult, int]:
     """Run the full CLI evaluation pipeline.
 
@@ -169,6 +170,7 @@ def run_cli_evaluation(
         codex_dist_path=codex_dist_path,
         scope=scope,
         test_run=test_run,
+        bundle_paths=list(bundle_paths or []),
     )
 
     print(f"\nRunning {adapter.name} adapter...")

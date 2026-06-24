@@ -112,6 +112,16 @@ class ClaudeCLIAdapter(CLIAdapter):
             shutil.copytree(config.claude_dist_path, claude_dst)
             _log(f"Installed .claude/ from {config.claude_dist_path}")
 
+            # Overlay any extension bundle deltas onto .claude/ (exactly as a
+            # consumer installs a bundle: copy the delta's .claude/ over the base).
+            # config.bundle_paths entries are already resolved Path objects; each
+            # points at a bundle's .claude/ (or a dir containing one).
+            for bundle in config.bundle_paths:
+                bundle_claude = bundle / ".claude"
+                src = bundle_claude if bundle_claude.is_dir() else bundle
+                shutil.copytree(src, claude_dst, dirs_exist_ok=True)
+                _log(f"Overlaid bundle from {src}")
+
             # Override the dist's hardcoded AWS_REGION via settings.local.json.
             if config.aws_region:
                 (claude_dst / "settings.local.json").write_text(

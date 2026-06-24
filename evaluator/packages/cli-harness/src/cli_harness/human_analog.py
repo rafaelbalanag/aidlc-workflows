@@ -58,6 +58,9 @@ clearly requires more phases.
 - Keep answers to 1-3 sentences per question. Be decisive — do not hedge.
 - Do NOT ask questions back. Do NOT add scope (README, CI, docs, etc.).
 - Do NOT declare the project "done" or "shipped" — that is Kiro's decision.
+- The `/aidlc` workflow is ALREADY RUNNING. NEVER re-issue a `/aidlc` command and \
+NEVER restate or change the `--scope` — doing so restarts the workflow at the wrong \
+scope. Just answer the gate/question in front of you (or "Approved. Continue.").
 """
 
 _USER_TEMPLATE = """\

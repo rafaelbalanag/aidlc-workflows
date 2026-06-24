@@ -264,6 +264,16 @@ class CodexCLIAdapter(CLIAdapter):
                 shutil.copy2(dist / "AGENTS.md", workspace / "AGENTS.md")
             _log(f"Installed codex distribution from {dist}")
 
+            # Overlay any extension bundle deltas (as a consumer installs a
+            # bundle). A codex bundle delta carries .codex/ AND .agents/ (its
+            # runner skills emit out-of-harness), so overlay both subtrees.
+            for bundle in config.bundle_paths:
+                for sub in (".codex", ".agents"):
+                    src = bundle / sub
+                    if src.is_dir():
+                        shutil.copytree(src, workspace / sub, dirs_exist_ok=True)
+                        _log(f"Overlaid bundle {sub} from {src}")
+
             # Codex discovers the project .codex/hooks.json only inside a git
             # repo (D10). Initialise and commit the installed tree.
             if not (workspace / ".git").is_dir():
