@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RFC 0001 — Design-Stage Rework</title>
+<style>
+  :root {
+    --fg: #1b1f24; --muted: #57606a; --accent: #0969da; --border: #d0d7de;
+    --bg: #ffffff; --code-bg: #f6f8fa; --table-stripe: #f6f8fa;
+    --tag-bg: #ddf4ff; --tag-fg: #0a3069;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fg: #e6edf3; --muted: #9198a1; --accent: #4493f8; --border: #30363d;
+      --bg: #0d1117; --code-bg: #161b22; --table-stripe: #161b22;
+      --tag-bg: #15314b; --tag-fg: #cae8ff;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--fg); background: var(--bg); line-height: 1.6;
+    max-width: 860px; margin: 0 auto; padding: 48px 24px 96px; font-size: 16px;
+  }
+  h1 { font-size: 1.9rem; line-height: 1.25; border-bottom: 2px solid var(--border); padding-bottom: .4em; margin-top: 0; }
+  h2 { font-size: 1.4rem; margin-top: 2.2em; border-bottom: 1px solid var(--border); padding-bottom: .3em; }
+  h3 { font-size: 1.13rem; margin-top: 1.6em; }
+  h4 { font-size: 1rem; margin-top: 1.3em; color: var(--muted); }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    background: var(--code-bg); padding: .15em .4em; border-radius: 5px; font-size: .88em;
+  }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 16px; overflow-x: auto; line-height: 1.45;
+  }
+  pre code { background: none; padding: 0; font-size: .85rem; }
+  table { border-collapse: collapse; width: 100%; margin: 1.1em 0; font-size: .92rem; }
+  th, td { border: 1px solid var(--border); padding: 8px 11px; text-align: left; vertical-align: top; }
+  th { background: var(--code-bg); font-weight: 600; }
+  tbody tr:nth-child(even) { background: var(--table-stripe); }
+  blockquote { margin: 1em 0; padding: .2em 1em; border-left: 4px solid var(--border); color: var(--muted); }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.4em 0; }
+  ul { padding-left: 1.4em; }
+  li { margin: .25em 0; }
+  .meta-table { max-width: 540px; }
+  .meta-table th { width: 130px; }
+  .status-pill {
+    display: inline-block; background: var(--tag-bg); color: var(--tag-fg);
+    border-radius: 999px; padding: 2px 12px; font-size: .82rem; font-weight: 600;
+  }
+  .toc {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 20px; margin: 1.6em 0;
+  }
+  .toc strong { display: block; margin-bottom: .4em; }
+  .toc ol { margin: 0; padding-left: 1.4em; }
+  .resolved { color: #1a7f37; font-weight: 600; }
+  @media (prefers-color-scheme: dark) { .resolved { color: #3fb950; } }
+</style>
+</head>
+<body>
+
+<h1>RFC 0001 — Design-Stage Rework<br><small style="font-size:1rem;color:var(--muted);font-weight:400;">Domain Design · Contracts · Functional Design · NFR · Infrastructure</small></h1>
+
+<table class="meta-table">
+  <tr><th>Status</th><td><span class="status-pill">Reviewed — all open questions resolved</span></td></tr>
+  <tr><th>Author</th><td><em>TBD</em></td></tr>
+  <tr><th>Created</th><td>2026-06-25</td></tr>
+  <tr><th>Target</th><td>v2 (<code>core/</code> + all harness dists)</td></tr>
+  <tr><th>Affects</th><td>6 stage files, scope grid, artifact vocabulary, stage-graph, sensors</td></tr>
+</table>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#summary">Summary</a></li>
+    <li><a href="#motivation">Motivation</a></li>
+    <li><a href="#current-proposed">Current State vs Proposed</a></li>
+    <li><a href="#migration">Migration</a></li>
+    <li><a href="#risks">Risks &amp; Trade-offs</a></li>
+    <li><a href="#decisions">Resolved Decisions</a></li>
+    <li><a href="#appendix">Appendix — Source mapping</a></li>
+  </ol>
+</div>
+
+<hr>
+
+<h2 id="summary">1. Summary</h2>
+
+<p>Rework the AI-DLC design stages so the design phase produces a coherent,
+<strong>ID-linked component blueprint</strong> (a stable-ID component model that downstream
+stages reference) instead of a scatter of disconnected markdown documents, and add
+an explicit <strong>inter-unit contract</strong> step so parallel teams can build against
+agreed boundaries.</p>
+
+<p>Six stages are in scope (AD, Contracts, FD, NFR-Requirements, NFR-Design,
+Infra), resolving into five outcomes:</p>
+
+<ol>
+  <li><strong>Application Design → Domain Design</strong> (rename + reconceptualize)</li>
+  <li><strong>Contract Design</strong> (NEW — inception 2.8)</li>
+  <li><strong>Functional Design</strong> (rework: structured entities/rules + provider API spec)</li>
+  <li><strong>NFR Requirements + NFR Design → NFR Design</strong> (merge two stages into one)</li>
+  <li><strong>Infrastructure Design</strong> (rework: consolidate to one specification, map logical → physical)</li>
+</ol>
+
+<p>The reworked stages originate on the <code>feature/workflow-composition-rework</code>
+branch, which uses a different runtime architecture (a flexible DAG with a
+<code>workflow-composition</code> step, different agent names, and <code>.yaml</code> artifact files
+validated by node scripts). This RFC ports the <strong>concepts and content</strong> of
+those stages into v2's fixed-pipeline, deterministic-engine format — it does
+<strong>not</strong> adopt the rework branch's runtime model.</p>
+
+<hr>
+
+<h2 id="motivation">2. Motivation</h2>
+
+<h3>2.1 The blueprint fragments today</h3>
+<p>In v2, <code>application-design</code> emits five independent markdown files
+(<code>components.md</code>, <code>component-methods.md</code>, <code>services.md</code>,
+<code>component-dependency.md</code>, <code>decisions.md</code>). Each downstream stage
+(<code>functional-design</code>, <code>nfr-design</code>, <code>infrastructure-design</code>) reads those
+and emits its own fresh set of markdown files. Nothing carries a stable identity
+forward: a "component" named in application-design has no durable link to the
+entity schema in functional-design, the NFR posture in nfr-design, or the infra
+mapping in infrastructure-design. The result is drift — the same component is
+re-described, slightly differently, at every stage, and nothing mechanically ties
+the descriptions together.</p>
+
+<h3>2.2 No contract boundary for parallel work</h3>
+<p>v2 has no stage that defines the <strong>interface between units</strong>. Units are
+generated (<code>units-generation</code>), then each unit is designed and built largely in
+isolation, with cross-unit integration left implicit. When two units must talk,
+the contract is discovered late — at code-generation or integration — which is the
+most expensive place to discover it.</p>
+
+<h3>2.3 The NFR split is redundant</h3>
+<p>v2 runs <code>nfr-requirements</code> (capture targets) then <code>nfr-design</code> (design
+patterns) as two separate per-unit stages with two gates. In practice the
+requirements are already captured at a high level upstream, and the split produces
+two passes over the same material with a gate in the middle that rarely changes
+direction. One consolidated stage — measurable targets + tech-stack choices +
+patterns + trade-offs in a single pass — is tighter and removes a gate.</p>
+
+<h3>2.4 Component ≠ infrastructure</h3>
+<p>v2's <code>application-design</code> conflates "code you write" with "infrastructure you
+deploy." Databases, caches, queues, and third-party services show up as
+components. The rework draws a hard line: a <strong>component</strong> is a bounded piece of
+software with its own business logic, entities, and lifecycle;
+databases/caches/queues/third-party services are <strong>dependencies of</strong> components,
+not components. Deployment topology (monolith vs microservices) is decided at
+<code>units-generation</code>, not at design time.</p>
+
+<hr>
+
+<h2 id="current-proposed">3. Current State vs Proposed</h2>
+
+<h3>3.1 Stage-by-stage</h3>
+<table>
+  <thead><tr><th>#</th><th>v2 today</th><th>Proposed</th><th>Phase (proposed)</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td><code>application-design</code> (inception) — 5 md artifacts</td><td><strong><code>domain-design</code></strong> — <code>components</code> blueprint (yaml-in-md) + human view</td><td>inception (2.6)</td></tr>
+    <tr><td>2</td><td>—</td><td><strong><code>contract-design</code></strong> (NEW) — inter-unit contracts</td><td>inception (<strong>2.8</strong>)</td></tr>
+    <tr><td>3</td><td><code>functional-design</code> (construction, per-unit) — 4 md artifacts</td><td><code>functional-design</code> — <code>entities</code> + <code>rules</code> (structured) + <code>api-specification</code> + human view</td><td>construction (per-unit)</td></tr>
+    <tr><td>4</td><td><code>nfr-requirements</code> + <code>nfr-design</code> (two stages)</td><td><strong><code>nfr-design</code></strong> (merged) — <code>nfr-specification</code> (targets + tech stack + patterns + trade-offs)</td><td>construction (per-unit)</td></tr>
+    <tr><td>5</td><td><code>infrastructure-design</code> — 5 md artifacts</td><td><code>infrastructure-design</code> — <code>infrastructure-specification</code> (one doc), references <code>cmp-NNN</code></td><td>construction (per-unit)</td></tr>
+  </tbody>
+</table>
+
+<h3>3.2 The blueprint chain (Option C — stable-ID references)</h3>
+<p>The design stages share a <strong>stable-ID component model</strong>. <code>domain-design</code>
+produces the canonical <code>components</code> artifact once, assigning every component a
+stable ID (<code>cmp-NNN</code>). Downstream stages do <strong>not</strong> copy or re-emit
+<code>components</code>; instead each emits its own artifact whose entries <strong>reference those
+component IDs</strong>. The <code>blueprint-shape</code> sensor (§4.6) verifies that every
+referenced <code>cmp-NNN</code> resolves to a component declared in the upstream <code>components</code>
+artifact — mechanical cross-stage traceability without re-emission.</p>
+<p>This is <strong>Option C</strong> (decided in review): it captures the load-bearing benefit
+of the rework branch's carry-forward model — stable IDs + mechanical "does this
+referenced component exist" validation — while respecting v2's single-producer
+artifact-vocabulary rule (a canonical name is produced by exactly one stage). We do
+NOT adopt the rework branch's literal file carry-forward (the single
+<code>components.yaml</code> physically copied forward and grown in place), which would
+require re-emitting the same canonical artifact from multiple stages and rewriting
+every stage body.</p>
+<pre><code>requirements ──&gt; domain-design ── produces `components` (stable cmp-NNN IDs)
+                      │
+              units-generation (group components into units; topology decision)
+                      │
+              contract-design (inter-unit contracts; references cmp-NNN)  ← inception 2.8
+                      │
+   ┌──────────────────┴───────────── per unit ──────────────────┐
+   functional-design   — entities/rules reference cmp-NNN
+                      │
+   nfr-design (merged) — nfr-specification references cmp-NNN
+                      │
+   infrastructure-design — infrastructure-specification references cmp-NNN
+                      │
+                code-generation</code></pre>
+<p>Stable-ID scheme: <code>cmp-NNN</code> (components, owned by domain-design), <code>ent-NNN</code>
+(entities, owned by functional-design), <code>rule-NNN</code> (business rules, owned by
+functional-design). IDs are assigned by the producing stage and referenced — never
+renumbered — downstream.</p>
+
+<h3>3.3 Artifact format decision (per this RFC)</h3>
+<p>Adopt the <strong>structured-source-of-truth</strong> idea from the rework branch, but keep
+v2's markdown-artifact convention so the sensor system, <code>required-sections</code>, and
+<code>upstream-coverage</code> checks keep working unchanged: <strong>embed the structured data as
+fenced <code>```yaml</code> blocks inside the artifact's markdown body</strong> rather than shipping
+separate <code>.yaml</code> files.</p>
+<p>Note this is the <strong>artifact body</strong>, not YAML frontmatter — frontmatter is
+reserved for stage-definition metadata (<code>slug</code>, <code>produces</code>, <code>consumes</code>, …); the
+output artifacts under <code>aidlc-docs/</code> carry no frontmatter. The canonical artifact
+name still resolves to a single <code>.md</code> file on disk (per
+<code>docs/reference/16-artifact-vocabulary.md</code>); the machine-readable YAML lives as a
+fenced block inside it, with prose/diagram views alongside.</p>
+<p>A new sensor validates the embedded YAML blocks (component / entity / rule shape)
+<strong>and the cross-stage <code>cmp-NNN</code> ID references</strong> — see §4.6. This gives v2 the
+mechanical traceability the rework branch got from physically carrying
+<code>components.yaml</code> forward, but via ID references checked by a sensor rather than
+file re-emission.</p>
+
+<h3>3.4 Per-stage detail</h3>
+
+<h4>(1) <code>application-design</code> → <code>domain-design</code></h4>
+<ul>
+  <li><strong>Slug change</strong> <code>application-design</code> → <code>domain-design</code> (breaking; see §5.1).</li>
+  <li><strong>Concept</strong>: identify the logical building blocks (components) of the system. A component = code you write (business logic + entities + lifecycle). DBs/caches/queues/3rd-party = dependencies of components, not components. Does NOT decide deployment topology.</li>
+  <li><strong>Produces</strong>: <code>components</code> (yaml-in-md catalogue: each component with a <strong>stable <code>cmp-NNN</code> ID</strong>, behaviour, dependencies, dependent-components, owned entities + attributes), <code>domain-design-questions</code>. Human view (mermaid + summary table) folded into the <code>components</code> artifact. <strong><code>domain-design</code> is the sole producer of <code>cmp-NNN</code> IDs.</strong></li>
+  <li><strong>Consumes</strong>: <code>requirements</code> (required); <code>stories</code>, RE artifacts (optional).</li>
+  <li><strong>Owner</strong>: <code>aidlc-architect-agent</code>. <strong>Reviewer</strong>: <code>aidlc-architecture-reviewer-agent</code>.</li>
+  <li><strong>Phase</strong>: inception, number 2.6.</li>
+</ul>
+
+<h4>(2) <code>contract-design</code> (NEW)</h4>
+<ul>
+  <li><strong>Concept</strong>: define the contracts between units so teams build in parallel. A contract = the formal provider/consumer agreement (data shape, protocol, failure behaviour). Cross-unit (not per-unit).</li>
+  <li><strong>Placement</strong>: inception stage <strong>2.8</strong>, after <code>units-generation</code>; <code>delivery-planning</code> shifts to 2.9 (stays the capstone). Contracts are NOT folded into delivery-planning — different concern (contracts = inter-unit API/event/schema specs by the architect; delivery-planning = Bolt sequencing/team allocation by the delivery agent).</li>
+  <li><strong>Skip rule</strong>: <code>execution: CONDITIONAL</code> — auto-skips when <code>units-generation</code> yields a single unit (no inter-unit boundary to contract). Resolved O-1.</li>
+  <li><strong>Produces</strong>: <code>contracts</code> (one spec per inter-unit boundary — OpenAPI / AsyncAPI / shared-schema), <code>contract-summary</code>, <code>contract-design-questions</code>. Contract entries reference the <code>cmp-NNN</code> IDs of the components on each boundary.</li>
+  <li><strong>Consumes</strong>: <code>unit-of-work</code> + <code>unit-of-work-dependency</code> (required, from units-generation); <code>components</code>, <code>requirements</code> (optional context).</li>
+  <li><strong>Owner</strong>: <code>aidlc-architect-agent</code>. <strong>Reviewer</strong>: <code>aidlc-architecture-reviewer-agent</code>.</li>
+</ul>
+
+<h4>(3) <code>functional-design</code> (rework)</h4>
+<ul>
+  <li><strong>Concept</strong>: detail business logic per unit — entities with full attribute schemas, numbered business rules with enforcement logic, workflows, state machines. Technology-agnostic.</li>
+  <li><strong>Produces</strong>: <code>entities</code> (structured, stable <code>ent-NNN</code> IDs), <code>rules</code> (structured, stable <code>rule-NNN</code> IDs), <code>api-specification</code> (provider-side interface for this unit), human-readable <code>functional-spec</code>, <code>functional-design-questions</code>. Entity/rule entries <strong>reference the <code>cmp-NNN</code> component IDs</strong> they belong to.</li>
+  <li><strong>Consumes</strong>: <code>unit-of-work</code> + <code>unit-of-work-story-map</code>, <code>components</code>, <code>contracts</code> (this unit's boundaries), <code>requirements</code>.</li>
+  <li><strong>Per-unit</strong> (<code>for_each: unit-of-work</code>), construction. Owner/reviewer unchanged.</li>
+</ul>
+
+<h4>(4) <code>nfr-requirements</code> + <code>nfr-design</code> → <code>nfr-design</code> (merge)</h4>
+<ul>
+  <li><strong>Concept</strong>: in one pass, make NFRs concrete — measurable targets + tech-stack decisions + architectural patterns + explicit trade-offs.</li>
+  <li><strong>Produces</strong>: <code>nfr-specification</code> (one doc) + <code>nfr-design-questions</code>. NFR postures <strong>reference the <code>cmp-NNN</code> component IDs</strong> they constrain.</li>
+  <li><strong>Consumes</strong>: <code>requirements</code> (NFR section), functional-design artifacts, <code>components</code>.</li>
+  <li><strong><code>nfr-requirements</code> is removed</strong> (its outputs are absorbed into this stage). The merged stage is <strong>self-sufficient</strong> (resolved O-5): it reads whatever NFR content <code>requirements</code> already carries and elicits any missing targets in its own question step. requirements-analysis is NOT changed by this RFC.</li>
+  <li><strong>Per-unit</strong>, construction. Owner/reviewer unchanged.</li>
+</ul>
+
+<h4>(5) <code>infrastructure-design</code> (rework)</h4>
+<ul>
+  <li><strong>Concept</strong>: map logical components → physical infrastructure services; define deployment architecture. Consolidated to one specification.</li>
+  <li><strong>Produces</strong>: <code>infrastructure-specification</code> (service mapping, compute, network, security boundaries, observability, deployment strategy) + <code>infrastructure-design-questions</code>. Infra mappings <strong>reference the <code>cmp-NNN</code> component IDs</strong> they realize.</li>
+  <li><strong>Consumes</strong>: <code>nfr-specification</code> (required), <code>components</code>, <code>contracts</code>/functional artifacts (optional).</li>
+  <li><strong>Per-unit</strong>, construction. Owner/reviewer unchanged.</li>
+</ul>
+
+<hr>
+
+<h2 id="migration">4. Migration</h2>
+
+<h3>4.1 Scope grid</h3>
+<p><code>nfr-requirements</code> is removed, so its column comes out of the compiled scope
+grid; <code>contract-design</code> is added as a new inception stage and needs scope
+membership. Resolved membership (O-2):</p>
+<ul>
+  <li><code>domain-design</code>: same scopes <code>application-design</code> has today — <code>enterprise</code>, <code>feature</code>, <code>mvp</code>, <code>workshop</code>.</li>
+  <li><code>contract-design</code>: <strong>wherever <code>units-generation</code> runs</strong> — <code>enterprise</code>, <code>feature</code>, <code>mvp</code>, <code>workshop</code>. The single-unit auto-skip (§3.4 (2) / O-1) handles intra-scope cases where a run produces only one unit.</li>
+  <li><code>nfr-design</code> (merged): <strong>union of today's <code>nfr-requirements</code> and <code>nfr-design</code> scope membership</strong> — <code>enterprise</code>, <code>feature</code>, <code>mvp</code>, <code>infra</code>, <code>security-patch</code>, <code>workshop</code>. (<code>nfr-requirements</code> carried <code>security-patch</code>; <code>nfr-design</code> did not. The merged stage keeps <code>security-patch</code>.)</li>
+  <li><code>functional-design</code>: unchanged (<code>enterprise</code>, <code>feature</code>, <code>mvp</code>, <code>refactor</code>, <code>workshop</code>).</li>
+  <li><code>infrastructure-design</code>: unchanged (<code>enterprise</code>, <code>feature</code>, <code>mvp</code>, <code>infra</code>, <code>workshop</code>).</li>
+</ul>
+<p>The scope grid is regenerated from each stage's <code>scopes:</code> frontmatter via
+<code>bun aidlc-graph.ts compile</code>; the README/SKILL scope table is regenerated, never
+hand-edited.</p>
+
+<h3>4.2 Artifact vocabulary</h3>
+<p>Per <code>docs/reference/16-artifact-vocabulary.md</code>, the registry is derived from
+<code>produces[]</code>. This RFC's renames/removals are a <strong>major-version artifact-surface
+change</strong>:</p>
+<ul>
+  <li><strong>Removed</strong> (from <code>application-design</code> + <code>nfr-requirements</code>): <code>component-methods</code>, <code>services</code>, <code>component-dependency</code>, <code>decisions</code> (folded into <code>components</code>); <code>performance-requirements</code>, <code>security-requirements</code>, <code>scalability-requirements</code>, <code>reliability-requirements</code>, <code>tech-stack-decisions</code> (folded into <code>nfr-specification</code>); <code>business-logic-model</code>, <code>business-rules</code>, <code>domain-entities</code> (replaced by <code>entities</code>/<code>rules</code>/<code>functional-spec</code>); the five infra artifacts (folded into <code>infrastructure-specification</code>).</li>
+  <li><strong>Added</strong>: <code>components</code>, <code>contracts</code>, <code>contract-summary</code>, <code>entities</code>, <code>rules</code>, <code>api-specification</code>, <code>functional-spec</code>, <code>nfr-specification</code>, <code>infrastructure-specification</code>, <code>domain-design-questions</code>, <code>contract-design-questions</code>.</li>
+  <li>Every consuming stage's <code>consumes[].artifact</code> must be updated; <code>/aidlc --doctor</code> "Graph references" + <code>aidlc-graph compile --check</code> catch any miss.</li>
+</ul>
+
+<h3>4.3 Stage graph + requires_stage</h3>
+<ul>
+  <li><code>application-design</code> row in <code>stage-graph.json</code> becomes <code>domain-design</code> (pre-seed slug/number/name before compile).</li>
+  <li><code>contract-design</code> is a new inception row, 2.8 (after units-generation); delivery-planning shifts to 2.9.</li>
+  <li><code>functional-design.requires_stage</code> adds <code>contract-design</code>.</li>
+  <li><code>nfr-design.requires_stage</code> drops <code>nfr-requirements</code>, keeps <code>functional-design</code>.</li>
+  <li>Construction renumbers: nfr-design 3.3→3.2, infrastructure-design 3.4→3.3, code-generation 3.5→3.4, build-and-test 3.6→3.5, ci-pipeline 3.7→3.6.</li>
+</ul>
+
+<h3>4.4 Tests</h3>
+<p>Structural tests pin stage counts and rosters (e.g. t01, t30 scope mapping, t32
+stage-graph consistency). Removing <code>nfr-requirements</code> and adding <code>contract-design</code>
+keeps the total at 32 (one removed, one added) but shifts the inception/construction
+distribution (inception 8→9, construction 7→6). Each affected test's expected
+counts/membership must be updated in the same change.</p>
+
+<h3>4.5 Version + changelog</h3>
+<p>Renames/removals of artifact names and a stage slug are breaking — bump the minor
+(per the in-flight pre-1.0 policy in <code>docs/reference/16-artifact-vocabulary.md</code>
+§Stability) and add a CHANGELOG entry with the upgrade note (workflows in flight on
+the old stage names must restart or re-map).</p>
+
+<h3>4.6 New sensor — <code>blueprint-shape</code> (shape + ID-reference validation)</h3>
+<p>Add a sensor (<code>blueprint-shape</code>) under <code>core/sensors/</code> that:</p>
+<ol>
+  <li><strong>Shape check</strong> — validates the fenced <code>```yaml</code> blocks in the blueprint artifacts (<code>components</code>, <code>entities</code>, <code>rules</code>) have the required keys (every component carries <code>id</code> + <code>behaviour</code> + <code>dependencies</code>; every entity an <code>id</code> + attributes; every rule an <code>id</code> + trigger + logic).</li>
+  <li><strong>ID-reference check (Option C core)</strong> — validates cross-stage referential integrity: every <code>cmp-NNN</code> referenced by an <code>entities</code>, <code>rules</code>, <code>nfr-specification</code>, <code>infrastructure-specification</code>, or <code>contracts</code> artifact resolves to a component declared in the upstream <code>components</code> artifact. An orphan reference emits <code>SENSOR_FAILED</code> with the offending id + artifact.</li>
+</ol>
+<p>It is imported via the <code>sensors:</code> frontmatter list on <code>domain-design</code>,
+<code>functional-design</code>, <code>nfr-design</code>, <code>infrastructure-design</code>, and <code>contract-design</code>.
+This is the v2-native mechanism for the carry-forward traceability (resolved O-4 +
+Option C), running through v2's existing TypeScript sensor + dispatch model — no
+parallel <code>.yaml</code> artifact class, no node validators.</p>
+
+<h3>4.7 Runner skills (hard rename)</h3>
+<p>The per-stage runner skill <code>/aidlc-application-design</code> is <strong>hard-renamed</strong> to
+<code>/aidlc-domain-design</code> — no deprecated alias (resolved O-3). The merged NFR stage
+keeps <code>/aidlc-nfr-design</code>; <code>/aidlc-nfr-requirements</code> is removed. <code>contract-design</code>
+gets a new <code>/aidlc-contract-design</code> runner. Runner skills are regenerated by the
+packager's runner-gen step from the stage graph, so this follows automatically once
+the stage files change — no hand-authoring.</p>
+
+<hr>
+
+<h2 id="risks">5. Risks &amp; Trade-offs</h2>
+
+<h3>5.1 Slug rename is breaking</h3>
+<p><code>application-design</code> → <code>domain-design</code> breaks any in-flight workflow whose
+<code>aidlc-state.md</code> references the old slug, plus the per-stage runner skill
+<code>/aidlc-application-design</code>. Mitigation: ship as a clean rename with a CHANGELOG
+upgrade note; do not alias (aliasing two slugs to one stage complicates the
+deterministic engine's slug lookups).</p>
+
+<h3>5.2 Dropping a gate (NFR merge)</h3>
+<p>Merging two gated stages into one removes a human checkpoint. For teams that relied
+on approving NFR targets before NFR design, the single gate now covers both.
+Trade-off accepted: the split rarely changed direction, and the merged stage still
+gates once.</p>
+
+<h3>5.3 Option C vs literal carry-forward</h3>
+<p>We adopt <strong>Option C</strong> (stable <code>cmp-NNN</code> IDs + downstream ID references validated
+by the <code>blueprint-shape</code> sensor) rather than the rework branch's literal file
+carry-forward (one <code>components.yaml</code> physically copied into each stage dir and grown
+in place). Option C respects v2's single-producer artifact rule (no re-emitting
+<code>components</code> from four stages), avoids rewriting every stage body, and still gives
+mechanical cross-stage traceability. Trade-off: the blueprint detail is spread across
+artifacts linked by ID rather than living in one growing file — accepted, since the
+linkage (not the single-file shape) is the load-bearing property.</p>
+
+<h3>5.4 Stage renumbering ripples into prose</h3>
+<p>Removing <code>nfr-requirements</code> and inserting <code>contract-design</code> shifts stage numbers
+(construction 3.2→3.6, delivery-planning 2.8→2.9). Stage numbers appear in
+<strong>prose</strong> — knowledge files ("Stage 2.8"), stage NOTEs (2.7/2.8 cross-refs), and the
+stage-protocol Bolt glossary ("one pass through stages 3.1–3.7"). All such references
+must be updated in the same change; a stale number is a correctness bug, not just
+cosmetic. (Tracked as explicit steps in the implementation plan.)</p>
+
+<h3>5.5 contract-design in inception</h3>
+<p>Placing contract-design as the cross-unit stage (2.8) before the per-unit
+construction fan-out matches the rework branch's "cross-unit boundary" intent. Risk:
+contracts defined before per-unit functional design may need revision once unit
+internals are detailed. Accepted: contracts are boundaries, not internals; the "90%
+right up front" framing is the explicit goal.</p>
+
+<hr>
+
+<h2 id="decisions">6. Resolved Decisions</h2>
+<ul>
+  <li><span class="resolved">O-1 (resolved: yes)</span> — <code>contract-design</code> is <code>CONDITIONAL</code> and auto-skips for single-unit projects. See §3.4 (2).</li>
+  <li><span class="resolved">O-2 (resolved)</span> — scope membership fixed in §4.1: <code>contract-design</code> rides wherever <code>units-generation</code> runs; merged <code>nfr-design</code> takes the union of both NFR stages' scopes (incl. <code>security-patch</code>).</li>
+  <li><span class="resolved">O-3 (resolved: hard rename)</span> — <code>/aidlc-application-design</code> → <code>/aidlc-domain-design</code>, no alias; <code>/aidlc-nfr-requirements</code> removed. See §4.7.</li>
+  <li><span class="resolved">O-4 (resolved: yes — Option C)</span> — add the <code>blueprint-shape</code> sensor (§4.6) for embedded-YAML shape AND cross-stage <code>cmp-NNN</code> ID-reference validation. YAML embedded in the artifact body (NOT frontmatter, §3.3). Stable-ID references checked by the sensor (Option C), not literal file carry-forward (§3.2, §5.3).</li>
+  <li><span class="resolved">O-5 (resolved: nfr-design self-sufficient)</span> — requirements-analysis is left untouched. The merged <code>nfr-design</code> reads whatever NFR content <code>requirements</code> carries and elicits any missing targets in its own question step. Earlier upstream NFR capture is deferred to a separate follow-up RFC.</li>
+</ul>
+<p>No open questions remain.</p>
+
+<hr>
+
+<h2 id="appendix">7. Appendix — Source mapping</h2>
+<p>Reworked stages are ported from <code>feature/workflow-composition-rework</code>
+(<code>kiro/src/stages/&lt;stage&gt;/definition.md</code>). That branch's runtime model (flexible
+DAG, <code>workflow-composition</code>, <code>.yaml</code> artifacts, node validators, agent names
+<code>aidlc-app-architect-agent</code> / <code>aidlc-systems-architect-agent</code>) is <strong>not</strong> adopted;
+only the stage concepts and artifact structure are ported into v2's fixed-pipeline
+format with v2's agent roster and reviewer mechanism, using stable-ID references
+(Option C) in place of the branch's literal file carry-forward.</p>
+
+</body>
+</html>
