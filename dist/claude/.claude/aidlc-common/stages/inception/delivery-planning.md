@@ -73,7 +73,7 @@ Use these affirmed practices when populating `bolt-plan.md`. If `aidlc-team.md` 
 
 ### Step 3: Generate Clarifying Questions
 
-This stage plans the Bolt sequence — the order in which Units of Work are executed through Construction. 2.7 produces the dependency DAG (topology); 2.8 chooses a path through it. Economic value cannot be derived from the DAG — that's a human value judgment.
+This stage plans the Bolt sequence — the order in which Units of Work are executed through Construction. 2.7 produces the dependency DAG (topology); 2.9 chooses a path through it. Economic value cannot be derived from the DAG — that's a human value judgment.
 
 **Definitions for this stage:**
 - **Bolt** — per `stage-protocol.md` Glossary: "a deployable unit of work within Construction — one pass through stages 3.1–3.7." A Bolt wraps one or more Units of Work and runs once through the Construction stages.

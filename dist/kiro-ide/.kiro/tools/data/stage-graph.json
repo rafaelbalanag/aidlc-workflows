@@ -1211,7 +1211,7 @@
     "name": "Units Generation",
     "phase": "inception",
     "execution": "ALWAYS",
-    "condition": "Always executes when in scope. Produces the dependency DAG that Stage 2.8 Delivery Planning consumes for Bolt sequencing. In the compiled scope grid, 2.7 and 2.8 travel together — both EXECUTE or both SKIP per scope.",
+    "condition": "Always executes when in scope. Produces the dependency DAG that Stage 2.9 Delivery Planning consumes for Bolt sequencing. In the compiled scope grid, 2.7 and 2.9 travel together — both EXECUTE or both SKIP per scope.",
     "lead_agent": "aidlc-architect-agent",
     "support_agents": [
       "aidlc-delivery-agent"
@@ -1285,8 +1285,90 @@
     ]
   },
   {
-    "slug": "delivery-planning",
+    "slug": "contract-design",
     "number": "2.8",
+    "name": "Contract Design",
+    "phase": "inception",
+    "execution": "CONDITIONAL",
+    "condition": "Execute when units-generation produced more than one unit (inter-unit boundaries exist that need contracts). Skip when there is a single unit (no inter-unit boundary to contract).",
+    "lead_agent": "aidlc-architect-agent",
+    "support_agents": [
+      "aidlc-product-agent"
+    ],
+    "mode": "inline",
+    "produces": [
+      "contracts",
+      "contract-summary"
+    ],
+    "consumes": [
+      {
+        "artifact": "unit-of-work",
+        "required": true
+      },
+      {
+        "artifact": "unit-of-work-dependency",
+        "required": true
+      },
+      {
+        "artifact": "components",
+        "required": false
+      },
+      {
+        "artifact": "requirements",
+        "required": false
+      }
+    ],
+    "requires_stage": [
+      "units-generation"
+    ],
+    "sensors": [
+      "required-sections",
+      "upstream-coverage"
+    ],
+    "scopes": [
+      "enterprise",
+      "feature",
+      "mvp",
+      "workshop"
+    ],
+    "reviewer": "aidlc-architecture-reviewer-agent",
+    "reviewer_max_iterations": 2,
+    "inputs": "aidlc-docs/inception/units-generation/unit-of-work.md, aidlc-docs/inception/units-generation/unit-of-work-dependency.md, aidlc-docs/inception/domain-design/components.md",
+    "outputs": "aidlc-docs/inception/contract-design/contracts/ (one spec per inter-unit boundary), aidlc-docs/inception/contract-design/contract-summary.md",
+    "rules_in_context": [
+      {
+        "path": ".kiro/steering/aidlc-org.md",
+        "scope": "org"
+      },
+      {
+        "path": ".kiro/steering/aidlc-team.md",
+        "scope": "team"
+      },
+      {
+        "path": ".kiro/steering/aidlc-project.md",
+        "scope": "project"
+      },
+      {
+        "path": ".kiro/steering/aidlc-phase-inception.md",
+        "scope": "phase"
+      }
+    ],
+    "sensors_applicable": [
+      {
+        "id": "required-sections",
+        "path": ".kiro/sensors/aidlc-required-sections.md",
+        "matches": "**/aidlc-docs/**"
+      },
+      {
+        "id": "upstream-coverage",
+        "path": ".kiro/sensors/aidlc-upstream-coverage.md",
+        "matches": "**/aidlc-docs/**"
+      }
+    ]
+  },
+  {
+    "slug": "delivery-planning",
+    "number": "2.9",
     "name": "Delivery Planning",
     "phase": "inception",
     "execution": "ALWAYS",
@@ -1421,7 +1503,8 @@
       }
     ],
     "requires_stage": [
-      "units-generation"
+      "units-generation",
+      "contract-design"
     ],
     "sensors": [
       "required-sections",

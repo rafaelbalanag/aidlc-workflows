@@ -106,15 +106,15 @@ Source of truth: one file per scope under `.claude/scopes/aidlc-<name>.md` (iden
 
 | Scope          | Depth         | TestStrategy | EXECUTE / Total |
 |----------------|---------------|--------------|-----------------|
-| bugfix         | Minimal       | (default)    | 7 / 32          |
-| enterprise     | Comprehensive | (default)    | 32 / 32         |
-| feature        | Standard      | (default)    | 32 / 32         |
-| infra          | Standard      | (default)    | 13 / 32         |
-| mvp            | Standard      | (default)    | 22 / 32         |
-| poc            | Minimal       | (default)    | 8 / 32          |
-| refactor       | Minimal       | (default)    | 8 / 32          |
-| security-patch | Minimal       | (default)    | 9 / 32          |
-| workshop       | Standard      | Minimal      | 25 / 32         |
+| bugfix         | Minimal       | (default)    | 7 / 33          |
+| enterprise     | Comprehensive | (default)    | 33 / 33         |
+| feature        | Standard      | (default)    | 33 / 33         |
+| infra          | Standard      | (default)    | 13 / 33         |
+| mvp            | Standard      | (default)    | 23 / 33         |
+| poc            | Minimal       | (default)    | 8 / 33          |
+| refactor       | Minimal       | (default)    | 8 / 33          |
+| security-patch | Minimal       | (default)    | 9 / 33          |
+| workshop       | Standard      | Minimal      | 26 / 33         |
 
 <!-- END: compiled scope grid -->
 
@@ -143,7 +143,8 @@ The engine reads the compiled `data/stage-graph.json` directly for all routing; 
 | refined-mockups | 2.5 | Refined Mockups | Inception | CONDITIONAL | aidlc-design-agent | aidlc-product-agent | inline |
 | domain-design | 2.6 | Domain Design | Inception | CONDITIONAL | aidlc-architect-agent | aidlc-aws-platform-agent, aidlc-design-agent | inline |
 | units-generation | 2.7 | Units Generation | Inception | ALWAYS | aidlc-architect-agent | aidlc-delivery-agent | inline |
-| delivery-planning | 2.8 | Delivery Planning | Inception | ALWAYS | aidlc-delivery-agent | aidlc-architect-agent | inline |
+| contract-design | 2.8 | Contract Design | Inception | CONDITIONAL | aidlc-architect-agent | aidlc-product-agent | inline |
+| delivery-planning | 2.9 | Delivery Planning | Inception | ALWAYS | aidlc-delivery-agent | aidlc-architect-agent | inline |
 | functional-design | 3.1 | Functional Design | Construction | CONDITIONAL | aidlc-architect-agent | aidlc-developer-agent | inline |
 | nfr-requirements | 3.2 | NFR Requirements | Construction | CONDITIONAL | aidlc-architect-agent | aidlc-devsecops-agent, aidlc-compliance-agent, aidlc-quality-agent | inline |
 | nfr-design | 3.3 | NFR Design | Construction | CONDITIONAL | aidlc-architect-agent | aidlc-aws-platform-agent | inline |
@@ -163,7 +164,7 @@ The engine reads the compiled `data/stage-graph.json` directly for all routing; 
 
 ## Key Principles
 
-- **Adaptive scope**: Scope determines which stages execute and at what depth — from 7-stage bugfix to 32-stage enterprise. The engine owns the resolution; you run the stages it hands you.
+- **Adaptive scope**: Scope determines which stages execute and at what depth — from 7-stage bugfix to 33-stage enterprise. The engine owns the resolution; you run the stages it hands you.
 - **STAGE RITUAL IS ATOMIC**: Once a stage starts, EVERY step fires: questions → artifact → reviewer (§12a, if declared) → learnings (§13) → gate. No step is skippable. "Skip to stage X" skips INTERMEDIATE stages, NOT the target stage's ritual. Complete the current stage fully (including learnings) before jumping.
 - **AUTONOMY IS NEVER INFERRED**: A user saying "go with recommended" for one stage is a one-time instruction for THAT stage. The next stage starts fresh. NEVER carry forward autonomy. NEVER self-answer questions without explicit permission for THIS specific stage.
 - **User control**: The user can override any stage decision at any approval gate.

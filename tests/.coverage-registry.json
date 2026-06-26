@@ -20,12 +20,12 @@
     "render-surface": "tui"
   },
   "counts": {
-    "total": 301,
+    "total": 302,
     "enumeratedByClass": {
       "function": 99,
       "audit": 67,
       "scope": 9,
-      "stage": 32,
+      "stage": 33,
       "hook": 10,
       "subcommand": 77,
       "render-surface": 7
@@ -2259,6 +2259,13 @@
     {
       "unitClass": "stage",
       "unitId": "ideation/team-formation",
+      "minMechanism": "none",
+      "coveredBy": [],
+      "status": "UNCOVERED"
+    },
+    {
+      "unitClass": "stage",
+      "unitId": "inception/contract-design",
       "minMechanism": "none",
       "coveredBy": [],
       "status": "UNCOVERED"

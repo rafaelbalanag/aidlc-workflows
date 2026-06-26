@@ -85,6 +85,11 @@
     "action": "SKIP"
   },
   {
+    "slug": "contract-design",
+    "phase": "inception",
+    "action": "SKIP"
+  },
+  {
     "slug": "delivery-planning",
     "phase": "inception",
     "action": "SKIP"

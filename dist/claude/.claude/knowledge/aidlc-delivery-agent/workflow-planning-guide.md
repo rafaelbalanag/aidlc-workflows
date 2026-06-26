@@ -49,11 +49,11 @@ For each stage decision, tie the rationale to specific work streams:
 4. **Test isolation**: Each stream should be independently testable where possible
 5. **Critical path optimization**: Identify the longest dependency chain and prioritize unblocking it
 
-## Economic vs topological sequencing (for Bolt Planning in Stage 2.8)
+## Economic vs topological sequencing (for Bolt Planning in Stage 2.9)
 
 Unit dependency analysis (Stage 2.7) produces the DAG — topological order falls out of it mechanically. That's geometry: what the system is.
 
-Bolt sequencing (Stage 2.8) is different work. It chooses a path through the DAG weighted by human value judgment — which Bolt ships first, which proves what, which surfaces the biggest risk early. AI can topologically sort; it cannot decide what validates the market hypothesis fastest.
+Bolt sequencing (Stage 2.9) is different work. It chooses a path through the DAG weighted by human value judgment — which Bolt ships first, which proves what, which surfaces the biggest risk early. AI can topologically sort; it cannot decide what validates the market hypothesis fastest.
 
 Per the canonical Glossary (`stage-protocol.md` line 657), a **Bolt** is "a deployable unit of work within Construction — one pass through stages 3.1–3.7." Bolts are not MMFs and not sprints.
 
