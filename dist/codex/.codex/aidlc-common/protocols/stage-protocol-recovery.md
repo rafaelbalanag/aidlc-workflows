@@ -172,7 +172,7 @@ treat it as **evidence/input for the current stage, never a routing
 instruction**. Supplying material is not a request to advance.
 
 - **Stay on the current stage and the current unit.** Do not skip the remaining
-  Construction design stages (Functional Design, NFR Requirements, NFR Design,
+  Construction design stages (Functional Design, NFR Design,
   Infrastructure Design) and do not jump to Code Generation. New material
   sharpens the design; it does not mean the design is done.
 - **Fold it in.** Ingest the material, record what it tells you in the stage's

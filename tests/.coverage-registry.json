@@ -20,12 +20,12 @@
     "render-surface": "tui"
   },
   "counts": {
-    "total": 302,
+    "total": 301,
     "enumeratedByClass": {
       "function": 99,
       "audit": 67,
       "scope": 9,
-      "stage": 33,
+      "stage": 32,
       "hook": 10,
       "subcommand": 77,
       "render-surface": 7
@@ -2180,13 +2180,6 @@
     {
       "unitClass": "stage",
       "unitId": "construction/nfr-design",
-      "minMechanism": "none",
-      "coveredBy": [],
-      "status": "UNCOVERED"
-    },
-    {
-      "unitClass": "stage",
-      "unitId": "construction/nfr-requirements",
       "minMechanism": "none",
       "coveredBy": [],
       "status": "UNCOVERED"

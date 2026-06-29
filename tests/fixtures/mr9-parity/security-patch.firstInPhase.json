@@ -2,6 +2,6 @@
   "initialization": "workspace-scaffold",
   "ideation": "none",
   "inception": "reverse-engineering",
-  "construction": "nfr-requirements",
+  "construction": "nfr-design",
   "operation": "deployment-pipeline"
 }

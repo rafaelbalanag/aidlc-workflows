@@ -16,9 +16,7 @@ consumes:
     required: true
   - artifact: alarms
     required: true
-  - artifact: reliability-design
-    required: true
-  - artifact: security-design
+  - artifact: nfr-specification
     required: true
   - artifact: deployment-architecture
     required: true
@@ -83,7 +81,7 @@ This stage's outputs are markdown artefacts under `aidlc-docs/operation/incident
 The imported sensors check those outputs:
 
 - **`required-sections`** verifies the output contains the registry default (≥2 H2 headings). Failure mode: missing headings emit `SENSOR_FAILED` with detail at `aidlc-docs/.aidlc-sensors/<stage-slug>/required-sections-<iso>.md`.
-- **`upstream-coverage`** verifies the output prose references each artefact declared in this stage's `consumes:` frontmatter. Failure mode: missing upstream references emit `SENSOR_FAILED` listing each unreferenced artefact (this stage consumes `dashboards`, `alarms`, `reliability-design`, `security-design`, `deployment-architecture`).
+- **`upstream-coverage`** verifies the output prose references each artefact declared in this stage's `consumes:` frontmatter. Failure mode: missing upstream references emit `SENSOR_FAILED` listing each unreferenced artefact (this stage consumes `dashboards`, `alarms`, `nfr-specification`, `deployment-architecture`).
 
 ## Learn
 

@@ -259,8 +259,8 @@ describe("t17 lookup", () => {
     );
   });
 
-  test("15: lookup validate-stage 3.5 resolves to code-generation", () => {
-    expect(runStateBare(["lookup", "validate-stage", "3.5"]).combined).toContain(
+  test("15: lookup validate-stage 3.4 resolves to code-generation", () => {
+    expect(runStateBare(["lookup", "validate-stage", "3.4"]).combined).toContain(
       '"slug":"code-generation"',
     );
   });

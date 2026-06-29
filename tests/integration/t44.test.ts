@@ -254,7 +254,7 @@ describe("t44 stage-instruction completeness — parseStageFrontmatter (migrated
   // Tests 31-34: construction stages mention aidlc-docs/construction/
   // ============================================================
 
-  for (const slug of ["functional-design", "nfr-requirements", "nfr-design", "code-generation"]) {
+  for (const slug of ["functional-design", "nfr-design", "code-generation"]) {
     test(`construction dir: ${slug} mentions aidlc-docs/construction/`, () => {
       expect(fileMatches(findStageFile(slug), /aidlc-docs\/construction/i)).toBe(true);
     });

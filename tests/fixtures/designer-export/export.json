@@ -1582,14 +1582,15 @@
       ]
     },
     {
-      "slug": "nfr-requirements",
+      "slug": "nfr-design",
       "number": "3.2",
-      "name": "NFR Requirements",
+      "name": "NFR Design",
       "phase": "construction",
       "execution": "CONDITIONAL",
-      "condition": "Performance requirements, security considerations, scalability concerns, or tech stack selection needed. Skip if no NFR requirements and tech stack already determined.",
+      "condition": "Quality attributes (performance, security, scalability, reliability), tech-stack selection, or NFR patterns need to be made concrete for this unit. Skip if no NFR work is needed and the stack is already determined.",
       "lead_agent": "aidlc-architect-agent",
       "support_agents": [
+        "aidlc-aws-platform-agent",
         "aidlc-devsecops-agent",
         "aidlc-compliance-agent",
         "aidlc-quality-agent"
@@ -1597,20 +1598,20 @@
       "mode": "inline",
       "for_each": "unit-of-work",
       "produces": [
-        "performance-requirements",
-        "security-requirements",
-        "scalability-requirements",
-        "reliability-requirements",
-        "tech-stack-decisions"
+        "nfr-specification"
       ],
       "consumes": [
+        {
+          "artifact": "requirements",
+          "required": true
+        },
         {
           "artifact": "functional-spec",
           "required": true
         },
         {
-          "artifact": "requirements",
-          "required": true
+          "artifact": "components",
+          "required": false
         },
         {
           "artifact": "technology-stack",
@@ -1625,6 +1626,7 @@
       "sensors": [
         "required-sections",
         "upstream-coverage",
+        "blueprint-shape",
         "linter",
         "type-check"
       ],
@@ -1638,8 +1640,8 @@
       ],
       "reviewer": "aidlc-architecture-reviewer-agent",
       "reviewer_max_iterations": 2,
-      "inputs": "functional design artifacts, requirements.md, RE artifacts",
-      "outputs": "aidlc-docs/construction/{unit-name}/nfr-requirements/ (performance-requirements.md, security-requirements.md, scalability-requirements.md, reliability-requirements.md, tech-stack-decisions.md)",
+      "inputs": "requirements.md (NFR section), functional-design artifacts, components blueprint, RE technology-stack (if brownfield)",
+      "outputs": "aidlc-docs/construction/{unit-name}/nfr-design/nfr-specification.md",
       "rules_in_context": [
         {
           "path": ".claude/rules/aidlc-org.md",
@@ -1670,111 +1672,8 @@
           "matches": "**/aidlc-docs/**"
         },
         {
-          "id": "linter",
-          "path": ".claude/sensors/aidlc-linter.md",
-          "matches": "**/*.{ts,js}"
-        },
-        {
-          "id": "type-check",
-          "path": ".claude/sensors/aidlc-type-check.md",
-          "matches": "**/*.{ts,tsx}"
-        }
-      ]
-    },
-    {
-      "slug": "nfr-design",
-      "number": "3.3",
-      "name": "NFR Design",
-      "phase": "construction",
-      "execution": "CONDITIONAL",
-      "condition": "NFR Requirements was executed and NFR patterns need design. Skip if NFR Requirements was skipped.",
-      "lead_agent": "aidlc-architect-agent",
-      "support_agents": [
-        "aidlc-aws-platform-agent"
-      ],
-      "mode": "inline",
-      "for_each": "unit-of-work",
-      "produces": [
-        "performance-design",
-        "security-design",
-        "scalability-design",
-        "reliability-design",
-        "logical-components"
-      ],
-      "consumes": [
-        {
-          "artifact": "performance-requirements",
-          "required": true
-        },
-        {
-          "artifact": "security-requirements",
-          "required": true
-        },
-        {
-          "artifact": "scalability-requirements",
-          "required": true
-        },
-        {
-          "artifact": "reliability-requirements",
-          "required": true
-        },
-        {
-          "artifact": "tech-stack-decisions",
-          "required": true
-        },
-        {
-          "artifact": "functional-spec",
-          "required": true
-        }
-      ],
-      "requires_stage": [
-        "units-generation",
-        "nfr-requirements"
-      ],
-      "sensors": [
-        "required-sections",
-        "upstream-coverage",
-        "linter",
-        "type-check"
-      ],
-      "scopes": [
-        "enterprise",
-        "feature",
-        "mvp",
-        "infra",
-        "workshop"
-      ],
-      "reviewer": "aidlc-architecture-reviewer-agent",
-      "reviewer_max_iterations": 2,
-      "inputs": "NFR requirements artifacts, functional design artifacts",
-      "outputs": "aidlc-docs/construction/{unit-name}/nfr-design/ (performance-design.md, security-design.md, scalability-design.md, reliability-design.md, logical-components.md)",
-      "rules_in_context": [
-        {
-          "path": ".claude/rules/aidlc-org.md",
-          "scope": "org"
-        },
-        {
-          "path": ".claude/rules/aidlc-team.md",
-          "scope": "team"
-        },
-        {
-          "path": ".claude/rules/aidlc-project.md",
-          "scope": "project"
-        },
-        {
-          "path": ".claude/rules/aidlc-phase-construction.md",
-          "scope": "phase"
-        }
-      ],
-      "sensors_applicable": [
-        {
-          "id": "required-sections",
-          "path": ".claude/sensors/aidlc-required-sections.md",
-          "matches": "**/aidlc-docs/**"
-        },
-        {
-          "id": "upstream-coverage",
-          "path": ".claude/sensors/aidlc-upstream-coverage.md",
+          "id": "blueprint-shape",
+          "path": ".claude/sensors/aidlc-blueprint-shape.md",
           "matches": "**/aidlc-docs/**"
         },
         {
@@ -1791,7 +1690,7 @@
     },
     {
       "slug": "infrastructure-design",
-      "number": "3.4",
+      "number": "3.3",
       "name": "Infrastructure Design",
       "phase": "construction",
       "execution": "CONDITIONAL",
@@ -1812,23 +1711,7 @@
       ],
       "consumes": [
         {
-          "artifact": "performance-design",
-          "required": true
-        },
-        {
-          "artifact": "security-design",
-          "required": true
-        },
-        {
-          "artifact": "scalability-design",
-          "required": true
-        },
-        {
-          "artifact": "reliability-design",
-          "required": true
-        },
-        {
-          "artifact": "logical-components",
+          "artifact": "nfr-specification",
           "required": true
         },
         {
@@ -1904,7 +1787,7 @@
     },
     {
       "slug": "code-generation",
-      "number": "3.5",
+      "number": "3.4",
       "name": "Code Generation",
       "phase": "construction",
       "execution": "ALWAYS",
@@ -1935,11 +1818,7 @@
           "required": false
         },
         {
-          "artifact": "performance-design",
-          "required": false
-        },
-        {
-          "artifact": "security-design",
+          "artifact": "nfr-specification",
           "required": false
         },
         {
@@ -1958,7 +1837,6 @@
       "requires_stage": [
         "units-generation",
         "functional-design",
-        "nfr-requirements",
         "nfr-design",
         "infrastructure-design"
       ],
@@ -2013,7 +1891,7 @@
     },
     {
       "slug": "build-and-test",
-      "number": "3.6",
+      "number": "3.5",
       "name": "Build and Test",
       "phase": "construction",
       "execution": "ALWAYS",
@@ -2100,7 +1978,7 @@
     },
     {
       "slug": "ci-pipeline",
-      "number": "3.7",
+      "number": "3.6",
       "name": "CI Pipeline",
       "phase": "construction",
       "execution": "CONDITIONAL",
@@ -2452,15 +2330,7 @@
       ],
       "consumes": [
         {
-          "artifact": "performance-design",
-          "required": true
-        },
-        {
-          "artifact": "security-design",
-          "required": true
-        },
-        {
-          "artifact": "reliability-design",
+          "artifact": "nfr-specification",
           "required": true
         },
         {
@@ -2546,11 +2416,7 @@
           "required": true
         },
         {
-          "artifact": "reliability-design",
-          "required": true
-        },
-        {
-          "artifact": "security-design",
+          "artifact": "nfr-specification",
           "required": true
         },
         {
@@ -2621,19 +2487,7 @@
       ],
       "consumes": [
         {
-          "artifact": "performance-requirements",
-          "required": true
-        },
-        {
-          "artifact": "scalability-requirements",
-          "required": true
-        },
-        {
-          "artifact": "performance-design",
-          "required": true
-        },
-        {
-          "artifact": "scalability-design",
+          "artifact": "nfr-specification",
           "required": true
         },
         {
@@ -2642,7 +2496,6 @@
         }
       ],
       "requires_stage": [
-        "nfr-requirements",
         "nfr-design",
         "observability-setup"
       ],
@@ -2655,7 +2508,7 @@
         "feature",
         "workshop"
       ],
-      "inputs": "NFR requirements from nfr-requirements stage, NFR design from nfr-design stage, deployed application, observability data from observability-setup stage",
+      "inputs": "NFR specification from nfr-design stage, deployed application, observability data from observability-setup stage",
       "outputs": "aidlc-docs/operation/performance-validation/load-test-plan.md, aidlc-docs/operation/performance-validation/test-results.md, aidlc-docs/operation/performance-validation/nfr-validation-matrix.md, aidlc-docs/operation/performance-validation/performance-validation-questions.md",
       "rules_in_context": [
         {
@@ -2806,7 +2659,6 @@
         "contract-design": "SKIP",
         "delivery-planning": "SKIP",
         "functional-design": "SKIP",
-        "nfr-requirements": "SKIP",
         "nfr-design": "SKIP",
         "infrastructure-design": "SKIP",
         "code-generation": "EXECUTE",
@@ -2850,7 +2702,6 @@
         "contract-design": "EXECUTE",
         "delivery-planning": "EXECUTE",
         "functional-design": "EXECUTE",
-        "nfr-requirements": "EXECUTE",
         "nfr-design": "EXECUTE",
         "infrastructure-design": "EXECUTE",
         "code-generation": "EXECUTE",
@@ -2890,7 +2741,6 @@
         "contract-design": "EXECUTE",
         "delivery-planning": "EXECUTE",
         "functional-design": "EXECUTE",
-        "nfr-requirements": "EXECUTE",
         "nfr-design": "EXECUTE",
         "infrastructure-design": "EXECUTE",
         "code-generation": "EXECUTE",
@@ -2930,7 +2780,6 @@
         "contract-design": "SKIP",
         "delivery-planning": "SKIP",
         "functional-design": "SKIP",
-        "nfr-requirements": "EXECUTE",
         "nfr-design": "EXECUTE",
         "infrastructure-design": "EXECUTE",
         "code-generation": "SKIP",
@@ -2974,7 +2823,6 @@
         "contract-design": "EXECUTE",
         "delivery-planning": "EXECUTE",
         "functional-design": "EXECUTE",
-        "nfr-requirements": "EXECUTE",
         "nfr-design": "EXECUTE",
         "infrastructure-design": "EXECUTE",
         "code-generation": "EXECUTE",
@@ -3017,7 +2865,6 @@
         "contract-design": "SKIP",
         "delivery-planning": "SKIP",
         "functional-design": "SKIP",
-        "nfr-requirements": "SKIP",
         "nfr-design": "SKIP",
         "infrastructure-design": "SKIP",
         "code-generation": "EXECUTE",
@@ -3062,7 +2909,6 @@
         "contract-design": "SKIP",
         "delivery-planning": "SKIP",
         "functional-design": "EXECUTE",
-        "nfr-requirements": "SKIP",
         "nfr-design": "SKIP",
         "infrastructure-design": "SKIP",
         "code-generation": "EXECUTE",
@@ -3106,8 +2952,7 @@
         "contract-design": "SKIP",
         "delivery-planning": "SKIP",
         "functional-design": "SKIP",
-        "nfr-requirements": "EXECUTE",
-        "nfr-design": "SKIP",
+        "nfr-design": "EXECUTE",
         "infrastructure-design": "SKIP",
         "code-generation": "EXECUTE",
         "build-and-test": "EXECUTE",
@@ -3151,7 +2996,6 @@
         "contract-design": "EXECUTE",
         "delivery-planning": "EXECUTE",
         "functional-design": "EXECUTE",
-        "nfr-requirements": "EXECUTE",
         "nfr-design": "EXECUTE",
         "infrastructure-design": "EXECUTE",
         "code-generation": "EXECUTE",
@@ -3239,16 +3083,14 @@
     "load-test-plan",
     "load-test-results",
     "log-queries",
-    "logical-components",
     "market-research-questions",
     "market-trends",
     "mob-composition",
     "mockups",
     "monitoring-design",
+    "nfr-specification",
     "nfr-validation-matrix",
     "observability-setup-questions",
-    "performance-design",
-    "performance-requirements",
     "performance-test-instructions",
     "performance-validation-questions",
     "personas",
@@ -3256,8 +3098,6 @@
     "quality-gates",
     "raid-log",
     "refined-mockups-questions",
-    "reliability-design",
-    "reliability-requirements",
     "requirements",
     "requirements-analysis-questions",
     "reverse-engineering-timestamp",
@@ -3266,12 +3106,8 @@
     "rough-mockups-questions",
     "rules",
     "runbooks",
-    "scalability-design",
-    "scalability-requirements",
     "scope-definition-questions",
     "scope-document",
-    "security-design",
-    "security-requirements",
     "security-test-instructions",
     "shared-infrastructure",
     "skill-matrix",
@@ -3284,7 +3120,6 @@
     "team-assessment",
     "team-formation-questions",
     "team-practices",
-    "tech-stack-decisions",
     "technology-stack",
     "tracing-config",
     "unit-of-work",

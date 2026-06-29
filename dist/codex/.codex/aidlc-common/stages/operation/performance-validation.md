@@ -12,18 +12,11 @@ produces:
   - nfr-validation-matrix
   - performance-validation-questions
 consumes:
-  - artifact: performance-requirements
-    required: true
-  - artifact: scalability-requirements
-    required: true
-  - artifact: performance-design
-    required: true
-  - artifact: scalability-design
+  - artifact: nfr-specification
     required: true
   - artifact: dashboards
     required: true
 requires_stage:
-  - nfr-requirements
   - nfr-design
   - observability-setup
 sensors:
@@ -33,7 +26,7 @@ scopes:
   - enterprise
   - feature
   - workshop
-inputs: NFR requirements from nfr-requirements stage, NFR design from nfr-design stage, deployed application, observability data from observability-setup stage
+inputs: NFR specification from nfr-design stage, deployed application, observability data from observability-setup stage
 outputs: aidlc-docs/operation/performance-validation/load-test-plan.md, aidlc-docs/operation/performance-validation/test-results.md, aidlc-docs/operation/performance-validation/nfr-validation-matrix.md, aidlc-docs/operation/performance-validation/performance-validation-questions.md
 ---
 
@@ -49,7 +42,7 @@ Load aidlc-quality-agent persona from `agents/aidlc-quality-agent.md` and knowle
 
 ### Step 2: Load Prior Context
 
-- Read NFR requirements from `aidlc-docs/construction/nfr-requirements/`
+- Read NFR specification from `aidlc-docs/construction/{unit-name}/nfr-design/`
 - Read NFR design from `aidlc-docs/construction/nfr-design/`
 - Read observability configuration from `aidlc-docs/operation/observability-setup/`
 
@@ -88,7 +81,7 @@ This stage's outputs are markdown artefacts under `aidlc-docs/operation/performa
 The imported sensors check those outputs:
 
 - **`required-sections`** verifies the output contains the registry default (≥2 H2 headings). Failure mode: missing headings emit `SENSOR_FAILED` with detail at `aidlc-docs/.aidlc-sensors/<stage-slug>/required-sections-<iso>.md`.
-- **`upstream-coverage`** verifies the output prose references each artefact declared in this stage's `consumes:` frontmatter. Failure mode: missing upstream references emit `SENSOR_FAILED` listing each unreferenced artefact (this stage consumes `performance-requirements`, `scalability-requirements`, `performance-design`, `scalability-design`, `dashboards`).
+- **`upstream-coverage`** verifies the output prose references each artefact declared in this stage's `consumes:` frontmatter. Failure mode: missing upstream references emit `SENSOR_FAILED` listing each unreferenced artefact (this stage consumes `nfr-specification`, `dashboards`).
 
 ## Learn
 

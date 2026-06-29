@@ -71,7 +71,7 @@ const STAGE_TABLE: ReadonlyArray<readonly [phase: string, slug: string]> = [
   ["ideation", "team-formation"],
   ["ideation", "rough-mockups"],
   ["ideation", "approval-handoff"],
-  // Inception (8)
+  // Inception (9)
   ["inception", "reverse-engineering"],
   ["inception", "practices-discovery"],
   ["inception", "requirements-analysis"],
@@ -79,10 +79,10 @@ const STAGE_TABLE: ReadonlyArray<readonly [phase: string, slug: string]> = [
   ["inception", "refined-mockups"],
   ["inception", "domain-design"],
   ["inception", "units-generation"],
+  ["inception", "contract-design"],
   ["inception", "delivery-planning"],
-  // Construction (7)
+  // Construction (6)
   ["construction", "functional-design"],
-  ["construction", "nfr-requirements"],
   ["construction", "nfr-design"],
   ["construction", "infrastructure-design"],
   ["construction", "code-generation"],

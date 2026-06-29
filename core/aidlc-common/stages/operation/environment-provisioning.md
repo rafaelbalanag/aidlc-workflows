@@ -47,7 +47,7 @@ Load aidlc-aws-platform-agent persona from `agents/aidlc-aws-platform-agent.md` 
 ### Step 2: Load Prior Context
 
 - Read infrastructure design from `aidlc-docs/construction/infrastructure-design/`
-- Read security requirements from `aidlc-docs/construction/nfr-requirements/`
+- Read security requirements from `aidlc-docs/construction/nfr-design/`
 
 ### Step 3: Generate Clarifying Questions
 

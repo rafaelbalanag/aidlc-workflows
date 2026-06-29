@@ -100,11 +100,6 @@
     "action": "SKIP"
   },
   {
-    "slug": "nfr-requirements",
-    "phase": "construction",
-    "action": "SKIP"
-  },
-  {
     "slug": "nfr-design",
     "phase": "construction",
     "action": "SKIP"

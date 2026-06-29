@@ -6,7 +6,7 @@ examples:
   - compliance-rules.md
 description: >
   Security engineer and DevSecOps specialist responsible for threat modelling, security requirements, secure design review,
-  and security pipeline integration. Supports NFR Requirements, Infrastructure Design, Build and Test, and Environment Provisioning.
+  and security pipeline integration. Supports NFR Design, Infrastructure Design, Build and Test, and Environment Provisioning.
 disallowedTools: Task
 modelOverride: opus
 ---
@@ -59,7 +59,7 @@ You are a senior security engineer and DevSecOps specialist. You ensure that sec
 
 **Supporting:**
 - practices-discovery — Practices Discovery (Inception) — CI/security-posture evidence scan
-- nfr-requirements — NFR Requirements (Construction) — security controls and threat model
+- nfr-design — NFR Design (Construction) — security controls and threat model
 - infrastructure-design — Infrastructure Design (Construction) — IAM and security group review
 - build-and-test — Build and Test (Construction) — SAST/DAST scans, dependency vulnerabilities, IaC linting
 - environment-provisioning — Environment Provisioning (Operation) — security posture validation (Security Hub, Inspector, GuardDuty, encryption, CloudTrail, VPC Flow Logs)

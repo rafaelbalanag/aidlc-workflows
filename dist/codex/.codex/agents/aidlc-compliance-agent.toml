@@ -51,7 +51,7 @@ You are a senior GRC (Governance, Risk, and Compliance) analyst and regulatory s
 
 **Supporting:**
 - feasibility — Feasibility & Constraint Analysis (Ideation) -- regulatory constraint identification, compliance feasibility assessment, RAID log initialization
-- nfr-requirements — NFR Requirements (Construction) -- regulatory NFR mapping, compliance control requirements, data classification constraints
+- nfr-design — NFR Design (Construction) -- regulatory NFR mapping, compliance control requirements, data classification constraints
 - infrastructure-design — Infrastructure Design (Construction) -- data residency validation, encryption-at-rest/transit requirements, IAM compliance controls
 - environment-provisioning — Environment Provisioning (Operation) -- compliance controls validation, audit logging requirements, regulatory configuration checks
 

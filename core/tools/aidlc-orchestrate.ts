@@ -451,9 +451,9 @@ const VALID_SKELETON_STANCES: ReadonlySet<string> = new Set([
 // (SKILL.md:686-692, verbatim): skeleton-on for greenfield-shaped scopes,
 // skeleton-off for incremental-work scopes. `infra` is greenfield-shaped, so it
 // is skeleton-on — and it DOES reach the skeleton gate: its first in-scope
-// construction stage is `nfr-requirements` (code-generation is SKIP for infra,
-// but nfr-requirements EXECUTEs and is what isSkeletonGateStage matches), so an
-// `infra` Construction workflow emits gate:"unresolved" at nfr-requirements and
+// construction stage is `nfr-design` (code-generation is SKIP for infra,
+// but nfr-design EXECUTEs and is what isSkeletonGateStage matches), so an
+// `infra` Construction workflow emits gate:"unresolved" at nfr-design and
 // resolves through this set like any other greenfield scope.
 const SKELETON_ON_SCOPES: ReadonlySet<string> = new Set([
   "enterprise",
@@ -517,7 +517,7 @@ function readBoltDagBatches(projectDir: string): string[][] | null {
 // not hardcoded: firstInScopeStageOfPhase("construction", scope) walks the
 // scope's EXECUTE-only sub-DAG and returns its first construction stage (e.g.
 // functional-design for feature/enterprise/mvp/refactor/workshop, code-generation
-// for poc/bugfix/security-patch, nfr-requirements for infra). A scope-mapping
+// for poc/bugfix/security-patch, nfr-design for infra). A scope-mapping
 // edit that moves the first construction stage moves the skeleton gate with it,
 // no code change. Non-construction stages are never the skeleton gate.
 function isSkeletonGateStage(node: GraphStage, scope: string): boolean {
@@ -590,13 +590,12 @@ function resolveSkeletonGate(stance: SkeletonStance, scope: string): boolean {
 // Unit of Work. It lives on the stage's `for_each` field (stage frontmatter,
 // compiled onto the GraphStage and into stage-graph.json) — NOT as a
 // `**Per-Unit:**` line (no such field exists) and NOT behind a later wave. The
-// canonical 5-stage set (nfr-requirements, nfr-design, functional-design,
+// canonical 4-stage set (nfr-design, functional-design,
 // infrastructure-design, code-generation) is the defensive cross-check; the
 // node's own `for_each` is the source of truth so a future per-unit stage is
 // picked up without editing this file.
 const PER_UNIT_FOR_EACH = "unit-of-work";
 const KNOWN_PER_UNIT_STAGES: ReadonlySet<string> = new Set([
-  "nfr-requirements",
   "nfr-design",
   "functional-design",
   "infrastructure-design",

@@ -157,28 +157,28 @@ describe("t47 Construction Bolt vocabulary (migrated from t47-construction-bolts
   });
 
   // =========================================================================
-  // Test 11 — stage-protocol.md Glossary ties a Bolt to stages 3.1-3.5, with
-  // 3.6/3.7 run once at the end. The .sh required BOTH greps to hit on the same
-  // file:
-  //   grep -q  "3\.1.*3\.5"           (the `.` matches the en-dash in "3.1-3.5")
-  //   grep -qi "3\.6.*3\.7.*once"
+  // Test 11 — stage-protocol.md Glossary ties a Bolt to stages 3.1-3.4, with
+  // 3.5/3.6 run once at the end. (RFC 0001 merged nfr-requirements into
+  // nfr-design, renumbering construction so the per-Bolt design span is now
+  // 3.1–3.4 and build-and-test/ci-pipeline are 3.5/3.6.)
   // Reproduce both as regex tests against the shipped bytes. STRONGER: assert
   // both on a SINGLE line (the Glossary **Bolt** row), so a split across
   // unrelated lines can't satisfy the guard.
   // =========================================================================
-  test("stage-protocol.md Glossary ties Bolt to 3.1-3.5 with 3.6/3.7 once at end", () => {
-    // .sh grep half 1: "3.1<anything>3.5" — the literal `.` is any-char, which
-    // is how the .sh matched the en-dash form "3.1-3.5".
-    expect(/3.1.*3.5/.test(STAGE_PROTOCOL)).toBe(true);
-    // .sh grep half 2 (case-insensitive): "3.6<...>3.7<...>once".
-    expect(/3.6.*3.7.*once/i.test(STAGE_PROTOCOL)).toBe(true);
-    // STRONGER: both halves co-located on one Glossary row. Find the line that
-    // carries the 3.1-3.5 span and assert the 3.6/3.7-once clause is on it too.
+  test("stage-protocol.md Glossary ties Bolt to 3.1-3.4 with 3.5/3.6 once at end", () => {
+    // half 1: "3.1<anything>3.4" — the literal `.` is any-char, matching the
+    // en-dash form "3.1–3.4".
+    expect(/3.1.*3.4/.test(STAGE_PROTOCOL)).toBe(true);
+    // half 2 (case-insensitive): "3.5<...>3.6<...>once".
+    expect(/3.5.*3.6.*once/i.test(STAGE_PROTOCOL)).toBe(true);
+    // STRONGER: both halves co-located on one Glossary row. Find the Glossary
+    // **Bolt** row (multiple lines mention 3.1–3.4; the glossary row is the one
+    // that also carries the 3.5/3.6-once clause).
     const boltRow = STAGE_PROTOCOL.split("\n").find((l) =>
-      /3.1.*3.5/.test(l),
+      /\*\*Bolt\*\*/.test(l) && /3.1.*3.4/.test(l),
     );
     expect(boltRow).toBeDefined();
-    expect(/3.6.*3.7.*once/i.test(boltRow ?? "")).toBe(true);
+    expect(/3.5.*3.6.*once/i.test(boltRow ?? "")).toBe(true);
   });
 
   // =========================================================================

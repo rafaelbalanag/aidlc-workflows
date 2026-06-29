@@ -2,39 +2,36 @@
 slug: nfr-design
 phase: construction
 execution: CONDITIONAL
-condition: NFR Requirements was executed and NFR patterns need design. Skip if NFR Requirements was skipped.
+condition: Quality attributes (performance, security, scalability, reliability), tech-stack selection, or NFR patterns need to be made concrete for this unit. Skip if no NFR work is needed and the stack is already determined.
 lead_agent: aidlc-architect-agent
 support_agents:
   - aidlc-aws-platform-agent
+  - aidlc-devsecops-agent
+  - aidlc-compliance-agent
+  - aidlc-quality-agent
 mode: inline
 reviewer: aidlc-architecture-reviewer-agent
 reviewer_max_iterations: 2
 for_each: unit-of-work
 produces:
-  - performance-design
-  - security-design
-  - scalability-design
-  - reliability-design
-  - logical-components
+  - nfr-specification
 consumes:
-  - artifact: performance-requirements
-    required: true
-  - artifact: security-requirements
-    required: true
-  - artifact: scalability-requirements
-    required: true
-  - artifact: reliability-requirements
-    required: true
-  - artifact: tech-stack-decisions
+  - artifact: requirements
     required: true
   - artifact: functional-spec
     required: true
+  - artifact: components
+    required: false
+  - artifact: technology-stack
+    required: false
+    conditional_on: brownfield
 requires_stage:
   - units-generation
-  - nfr-requirements
+  - functional-design
 sensors:
   - required-sections
   - upstream-coverage
+  - blueprint-shape
   - linter
   - type-check
 scopes:
@@ -42,14 +39,17 @@ scopes:
   - feature
   - mvp
   - infra
+  - security-patch
   - workshop
-inputs: NFR requirements artifacts, functional design artifacts
-outputs: aidlc-docs/construction/{unit-name}/nfr-design/ (performance-design.md, security-design.md, scalability-design.md, reliability-design.md, logical-components.md)
+inputs: requirements.md (NFR section), functional-design artifacts, components blueprint, RE technology-stack (if brownfield)
+outputs: aidlc-docs/construction/{unit-name}/nfr-design/nfr-specification.md
 ---
 
 # NFR Design
 
 MANDATORY: Follow stage-protocol.md for approval gates, question format, and completion messages.
+
+Make the unit's non-functional requirements concrete in a single pass: measurable quality targets, the technology-stack selection, the architectural patterns that satisfy each quality attribute, and the explicit trade-offs. This stage is **self-sufficient** — it captures whatever NFR targets are needed here, reading whatever the upstream `requirements` already carries and eliciting any missing targets in its own question step. There is no separate NFR-requirements stage.
 
 ## Steps
 
@@ -64,57 +64,56 @@ Do NOT proceed to design or artifact generation. Return control to the orchestra
 **ARTIFACT-ONLY mode** (invoked by orchestrator during a Bolt's design phase):
 Skip Steps 1–4 (questions already collected and approved).
 Read the answered questions file from the per-unit directory.
-Execute Steps 5–8 only (design solutions, generate artifacts, update state, completion).
+Execute Steps 5–8 only (design solutions, generate artifact, update state, completion).
 
 **Full mode** (default — single-unit projects or direct stage invocation):
 Execute all steps sequentially as written.
 
 ### Step 1: Load Personas
 
-Load aidlc-architect-agent (lead) persona from `agents/aidlc-architect-agent.md` and knowledge from `{{HARNESS_DIR}}/knowledge/aidlc-architect-agent/`. Load aidlc-aws-platform-agent persona from `agents/aidlc-aws-platform-agent.md` and knowledge from `{{HARNESS_DIR}}/knowledge/aidlc-aws-platform-agent/` for infrastructure and platform input. Apply aidlc-architect-agent as the primary perspective with aidlc-aws-platform-agent providing domain-specific input.
+Load aidlc-architect-agent (lead) persona from `agents/aidlc-architect-agent.md` and knowledge from `{{HARNESS_DIR}}/knowledge/aidlc-architect-agent/`. Load aidlc-aws-platform-agent (platform/infra patterns), aidlc-devsecops-agent (security requirements + posture), aidlc-compliance-agent (regulatory constraint mapping), and aidlc-quality-agent (testable quality-attribute scenarios) personas and knowledge. Apply aidlc-architect-agent as the primary perspective with the others providing specialist input.
 
 ### Step 2: Read Prior Artifacts
 
-Read NFR requirements from `aidlc-docs/construction/{unit-name}/nfr-requirements/`. Read functional design artifacts from `aidlc-docs/construction/{unit-name}/functional-design/` (if they exist). Read application design from `aidlc-docs/inception/application-design/` for architectural context.
+Read `aidlc-docs/inception/requirements-analysis/requirements.md` (especially its NFR section). Read functional design artifacts from `aidlc-docs/construction/{unit-name}/functional-design/`. Read the `components` blueprint from `aidlc-docs/inception/domain-design/components.md` for the `cmp-NNN` ids the NFR posture will annotate. If brownfield, read any technology-stack artifacts from reverse-engineering for existing-stack constraints.
 
-### Step 3: Generate Design Questions
+### Step 3: Assess NFR Categories and Generate Questions
 
-Create a questions file at `aidlc-docs/construction/{unit-name}/nfr-design/nfr-design-questions.md` with context-appropriate questions using [Answer]: tags.
+Assess the unit across the NFR categories (performance, security, scalability, reliability, observability) and select the tech stack. Create a questions file at `aidlc-docs/construction/{unit-name}/nfr-design/nfr-design-questions.md` using [Answer]: tags. Because this stage is self-sufficient, the questions cover BOTH the quantitative targets (what "good" means) AND the design choices (how to achieve it):
 
-Focus areas:
-- Resilience patterns (circuit breakers, bulkheads, fallback strategies)
-- Scalability patterns (horizontal vs vertical, data partitioning, caching tiers)
-- Performance optimization (latency budgets, throughput targets, resource pooling)
-- Security approach (defense in depth, zero trust, encryption standards)
-- Logical component boundaries (service isolation, failure domains, blast radius)
+- Quantifiable targets: response-time/latency budgets, throughput, availability SLO, durability, capacity/growth
+- Security posture: authn/authz model, data classification, encryption at rest/in transit, compliance controls
+- Resilience + scalability patterns: circuit breakers, retries/backoff, failover, horizontal/vertical scaling, partitioning, caching tiers
+- Tech-stack selection: languages, frameworks, datastores, infra tools — with rationale
+- Trade-offs: what is sacrificed for what, and why
 
 ### Step 4: Collect and Analyze Answers
 
-Collect answers following stage-protocol.md §3 question flow (offer interaction mode choice, collect answers, write back to file). After collecting answers, perform MANDATORY ambiguity analysis:
-- Identify vague answers ("mix of", "not sure", "depends", "probably")
-- Check for contradictions between answers
-- Flag missing details needed for artifact generation
+Collect answers following stage-protocol.md §3 question flow (offer interaction mode choice, collect answers, write back to file). MANDATORY ambiguity analysis:
+- Identify vague answers ("fast enough", "highly available", "secure", "mix of", "depends")
+- Check for contradictions between targets
+- Flag missing quantitative targets
 
 If ANY ambiguity found: create follow-up questions and resolve before proceeding.
 
-### Step 5: Design NFR Solutions
+### Step 5: Design the NFR Solution
 
-Design concrete solutions for each NFR category:
+Design concrete, measurable solutions per category, each tied to the targets from Step 4:
 
-- **Performance**: Caching strategies, query optimization, connection pooling, async processing, CDN usage, lazy loading, pagination
-- **Security**: Authentication flows, authorization model, encryption (at rest and in transit), input validation, CSRF/XSS protection, secrets management, audit logging
-- **Scalability**: Horizontal/vertical scaling approach, load balancing, data partitioning/sharding, queue-based decoupling, stateless design
-- **Reliability**: Circuit breakers, retry policies with backoff, health checks, graceful degradation, failover strategies, data replication
+- **Performance**: caching architecture, query/connection optimization, async patterns, CDN, performance budgets
+- **Security**: authn/authz architecture, encryption design, input validation, secrets management, audit logging, compliance controls
+- **Scalability**: scaling approach, load distribution, data partitioning/sharding, queue-based decoupling, capacity thresholds, auto-scaling rules
+- **Reliability**: circuit breakers, retry policies with backoff, health checks, graceful degradation, failover, backup/replication
+- **Tech stack + patterns**: the selected technologies and the architectural patterns that realize the above, with explicit trade-offs
 
-### Step 6: Generate Artifacts
+### Step 6: Generate Artifact
 
-Generate the following in `aidlc-docs/construction/{unit-name}/nfr-design/`:
-
-- **performance-design.md**: Caching architecture, optimization strategies, resource pooling, async patterns, performance budgets
-- **security-design.md**: Authentication/authorization architecture, encryption design, input validation strategy, security headers, compliance controls
-- **scalability-design.md**: Scaling architecture, load distribution, data partitioning strategy, capacity thresholds, auto-scaling rules
-- **reliability-design.md**: Resilience patterns, circuit breaker configuration, retry policies, health check design, failover procedures, backup strategy
-- **logical-components.md**: Logical infrastructure component inventory — service boundaries, failure domains, blast radius mapping, component isolation strategy, shared resource identification. Bridges NFR design decisions with Infrastructure Design by providing a component-level view of where NFR patterns apply.
+Generate `aidlc-docs/construction/{unit-name}/nfr-design/nfr-specification.md` — the single NFR specification covering, in one document:
+- Measurable quality targets (the "requirements" half: SLOs, budgets, capacity)
+- Technology-stack decisions and rationale
+- Architectural patterns per quality attribute (the "design" half)
+- Trade-offs and constraints
+- NFR posture annotations keyed to the `cmp-NNN` components they constrain (so the `blueprint-shape` sensor can verify every referenced component resolves upstream)
 
 ### Step 7: Update State
 
@@ -128,7 +127,7 @@ Present completion message and approval gate:
 # :shield: NFR Design Complete — {unit-name}
 ```
 
-Summary of design decisions per NFR category, then:
+Summary of targets, tech-stack choices, and patterns, then:
 
 ```
 **Review:** `aidlc-docs/construction/{unit-name}/nfr-design/`
@@ -138,12 +137,13 @@ Approval gate: strictly 2-option (Approve / Request Changes).
 
 ## Sensors
 
-This stage's outputs are markdown design artefacts under `aidlc-docs/construction/nfr-design/`. Some sections include code samples that the code-shape sensors can also flag.
+This stage's output is the `nfr-specification` under `aidlc-docs/construction/nfr-design/`. Some sections include code samples that the code-shape sensors can also flag.
 
-The imported sensors check those outputs:
+The imported sensors check that output:
 
 - **`required-sections`** verifies the output contains the registry default (≥2 H2 headings).
-- **`upstream-coverage`** verifies the output prose references each artefact declared in this stage's `consumes:` frontmatter (this stage consumes `performance-requirements`, `security-requirements`, `scalability-requirements`, `reliability-requirements`, `tech-stack-decisions`, `functional-spec`).
+- **`upstream-coverage`** verifies the output prose references each artefact declared in this stage's `consumes:` frontmatter (this stage consumes `requirements`, `functional-spec`, `components`, `technology-stack`).
+- **`blueprint-shape`** verifies that every `cmp-NNN` the spec references resolves to a component declared in the upstream `components` blueprint. An orphan reference emits `SENSOR_FAILED`.
 - **`linter`** runs against any TypeScript/JavaScript snippets the design includes (matches `**/*.{ts,js}`).
 - **`type-check`** runs against any TypeScript/TSX snippets the design includes (matches `**/*.{ts,tsx}`).
 

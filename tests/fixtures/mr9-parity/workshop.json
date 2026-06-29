@@ -100,11 +100,6 @@
     "action": "EXECUTE"
   },
   {
-    "slug": "nfr-requirements",
-    "phase": "construction",
-    "action": "EXECUTE"
-  },
-  {
     "slug": "nfr-design",
     "phase": "construction",
     "action": "EXECUTE"

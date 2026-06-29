@@ -392,9 +392,9 @@ beforeAll(() => {
 // ============================================================
 describe("t65 parse + schema validation (in-process)", () => {
   // .sh #1: "all 32 stage files parse via parseStageFrontmatter"
-  test("all 33 stage files parse via parseStageFrontmatter (total=33, no errors)", () => {
+  test("all 32 stage files parse via parseStageFrontmatter (total=32, no errors)", () => {
     expect(agg.parseErrors).toEqual([]);
-    expect(agg.totalParsed).toBe(33);
+    expect(agg.totalParsed).toBe(32);
   });
 
   // .sh #2: "non-init stages validate against milestone 5 schema with ctx.agents"
@@ -417,13 +417,14 @@ describe("t65 parse + schema validation (in-process)", () => {
 // Per-phase stage counts (.sh assertions 4-8)
 // ============================================================
 describe("t65 per-phase stage counts (in-process)", () => {
-  // .sh #4-8: init=3, ideation=7, inception=9, construction=7, operation=7.
-  // (inception grew to 9 with contract-design under RFC 0001.)
+  // .sh #4-8: init=3, ideation=7, inception=9, construction=6, operation=7.
+  // (inception grew to 9 with contract-design under RFC 0001; construction
+  // dropped to 6 with the nfr-requirements→nfr-design merge.)
   const expected: Array<[string, number]> = [
     ["initialization", 3],
     ["ideation", 7],
     ["inception", 9],
-    ["construction", 7],
+    ["construction", 6],
     ["operation", 7],
   ];
   for (const [phase, count] of expected) {
@@ -437,9 +438,10 @@ describe("t65 per-phase stage counts (in-process)", () => {
 // for_each + mode (.sh assertions 9-11)
 // ============================================================
 describe("t65 for_each + mode (in-process)", () => {
-  // .sh #9: "exactly 5 stages have for_each: unit-of-work, all in construction"
-  test("exactly 5 stages have for_each: unit-of-work, all in construction", () => {
-    expect(agg.forEachCount).toBe(5);
+  // .sh #9: "exactly 4 stages have for_each: unit-of-work, all in construction"
+  // (was 5; the nfr-requirements→nfr-design merge removed one per-unit stage.)
+  test("exactly 4 stages have for_each: unit-of-work, all in construction", () => {
+    expect(agg.forEachCount).toBe(4);
     expect(agg.forEachNonConstruction).toEqual([]);
     expect(agg.forEachValue).toEqual(["unit-of-work"]);
   });

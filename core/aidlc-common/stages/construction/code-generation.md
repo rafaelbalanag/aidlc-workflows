@@ -21,9 +21,7 @@ consumes:
     required: false
   - artifact: api-specification
     required: false
-  - artifact: performance-design
-    required: false
-  - artifact: security-design
+  - artifact: nfr-specification
     required: false
   - artifact: deployment-architecture
     required: false
@@ -34,7 +32,6 @@ consumes:
 requires_stage:
   - units-generation
   - functional-design
-  - nfr-requirements
   - nfr-design
   - infrastructure-design
 sensors:
@@ -69,7 +66,7 @@ MANDATORY: Follow stage-protocol.md for approval gates, question format, and com
 
 Read all design artifacts for the current unit:
 - Functional design from `aidlc-docs/construction/{unit-name}/functional-design/` (if exists)
-- NFR requirements from `aidlc-docs/construction/{unit-name}/nfr-requirements/` (if exists)
+- NFR specification from `aidlc-docs/construction/{unit-name}/nfr-design/` (if exists)
 - NFR design from `aidlc-docs/construction/{unit-name}/nfr-design/` (if exists)
 - Infrastructure design from `aidlc-docs/construction/{unit-name}/infrastructure-design/` (if exists)
 - Application design from `aidlc-docs/inception/application-design/`

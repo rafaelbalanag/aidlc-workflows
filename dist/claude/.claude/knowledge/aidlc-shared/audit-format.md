@@ -102,7 +102,7 @@ All event names follow `SUBJECT_PAST_VERB` — every event answers "what happene
 
 ### Construction Bolt Events (4 events)
 
-Emitted only during Phase 3 (Construction). A Bolt is one execution of stages 3.1–3.5 for a Unit or small group of dependency-linked Units. See `stage-protocol.md` Glossary.
+Emitted only during Phase 3 (Construction). A Bolt is one execution of stages 3.1–3.4 for a Unit or small group of dependency-linked Units. See `stage-protocol.md` Glossary.
 
 | Event | When | Required Fields | Emitter |
 |-------|------|-----------------|---------|

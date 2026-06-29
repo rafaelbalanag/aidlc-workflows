@@ -18,15 +18,7 @@ produces:
   - cicd-pipeline
   - shared-infrastructure
 consumes:
-  - artifact: performance-design
-    required: true
-  - artifact: security-design
-    required: true
-  - artifact: scalability-design
-    required: true
-  - artifact: reliability-design
-    required: true
-  - artifact: logical-components
+  - artifact: nfr-specification
     required: true
   - artifact: components
     required: true
@@ -82,7 +74,7 @@ Read all prior design artifacts for context:
 - NFR design from `aidlc-docs/construction/{unit-name}/nfr-design/` (if exists)
 - Functional design from `aidlc-docs/construction/{unit-name}/functional-design/` (if exists)
 - Application design from `aidlc-docs/inception/application-design/`
-- NFR requirements from `aidlc-docs/construction/{unit-name}/nfr-requirements/` (if exists)
+- NFR specification from `aidlc-docs/construction/{unit-name}/nfr-design/` (if exists)
 
 ### Step 3: Generate Infrastructure Questions
 
@@ -151,7 +143,7 @@ This stage's outputs are markdown design artefacts under `aidlc-docs/constructio
 The imported sensors check those outputs:
 
 - **`required-sections`** verifies the output contains the registry default (≥2 H2 headings).
-- **`upstream-coverage`** verifies the output prose references each artefact declared in this stage's `consumes:` frontmatter (this stage consumes `performance-design`, `security-design`, `scalability-design`, `reliability-design`, `logical-components`, `components`, `functional-spec`).
+- **`upstream-coverage`** verifies the output prose references each artefact declared in this stage's `consumes:` frontmatter (this stage consumes `nfr-specification`, `components`, `functional-spec`).
 - **`linter`** runs against any TypeScript/JavaScript snippets the design includes (matches `**/*.{ts,js}`).
 - **`type-check`** runs against any TypeScript/TSX snippets the design includes (matches `**/*.{ts,tsx}`).
 
