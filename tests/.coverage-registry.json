@@ -20,9 +20,9 @@
     "render-surface": "tui"
   },
   "counts": {
-    "total": 416,
+    "total": 418,
     "enumeratedByClass": {
-      "function": 201,
+      "function": 203,
       "audit": 70,
       "scope": 9,
       "stage": 32,
@@ -1099,6 +1099,20 @@
         }
       ],
       "status": "covered"
+    },
+    {
+      "unitClass": "function",
+      "unitId": "function:COMPOSE_MARKER_TTL_MS",
+      "minMechanism": "none",
+      "coveredBy": [],
+      "status": "UNCOVERED"
+    },
+    {
+      "unitClass": "function",
+      "unitId": "function:composeMarkerPath",
+      "minMechanism": "none",
+      "coveredBy": [],
+      "status": "UNCOVERED"
     },
     {
       "unitClass": "function",
@@ -4503,6 +4517,10 @@
         },
         {
           "file": "tests/unit/t184-stage-graph-drift.test.ts",
+          "mechanism": "cli"
+        },
+        {
+          "file": "tests/unit/t204-compose-marker-doctor.test.ts",
           "mechanism": "cli"
         },
         {

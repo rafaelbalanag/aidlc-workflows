@@ -18,11 +18,20 @@
 //   3. marker present + AUTONOMOUS construction  -> BLOCK (autonomy guard)
 //   4. marker deleted after the gate resolves    -> BLOCK again (one-shot)
 //
+// STALENESS BOUND (hardening): the conductor owns the write/delete, but a crash
+// between "write the marker" and "gate resolves" can strand the marker forever -
+// a permanently open carve-out that silently disables the forwarding-loop
+// enforcement for the whole workspace. The hook now bounds the carve-out by the
+// marker's mtime (a 24h freshness window):
+//   5. FRESH marker (recent mtime)               -> ALLOW + marker untouched
+//   6. STALE marker (mtime > 24h)                -> BLOCK + marker cleaned up
+//      (the janitor: an orphaned marker cannot linger and re-disable the loop)
+//
 // Mechanism: cli - stdin JSON + env + stdout decision, exactly t121's seam.
 
 import { afterAll, describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, unlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -33,6 +42,13 @@ import {
   seededRecordDir,
   seededStateFile,
 } from "../harness/fixtures.ts";
+// The hook and this test agree on the marker path and the freshness window
+// through the shipped lib exports, so neither the spelling nor the stale-marker
+// backdate can drift from the hook (no magic strings or numbers here).
+import {
+  composeMarkerPath,
+  COMPOSE_MARKER_TTL_MS,
+} from "../../dist/claude/.claude/tools/aidlc-lib.ts";
 
 const BUN = process.execPath;
 const REPO_ROOT = join(import.meta.dir, "..", "..");
@@ -90,7 +106,7 @@ function seedActive(proj: string, opts: { autonomy?: string } = {}): void {
   );
 }
 
-const markerPath = (proj: string): string => join(proj, "aidlc", ".aidlc-compose-pending");
+const markerPath = composeMarkerPath;
 
 function runHook(proj: string): { rc: number; out: string } {
   const res = spawnSync(BUN, [HOOK_TS], {
@@ -139,5 +155,35 @@ describe("t195 pending-compose Stop-hook carve-out (tier 2b)", () => {
     unlinkSync(markerPath(proj));
     const r = runHook(proj);
     expect(r.out).toContain('"decision":"block"');
+  });
+
+  test("5: a FRESH marker (recent mtime) still ALLOWS and is left untouched", () => {
+    const proj = makeProject();
+    seedActive(proj);
+    // Written now: comfortably inside the 24h freshness window.
+    writeFileSync(markerPath(proj), "pending\n", "utf-8");
+    const r = runHook(proj);
+    expect(r.rc).toBe(0);
+    expect(r.out).not.toContain('"decision":"block"');
+    // A fresh marker is the live-gate signal; the hook does not disturb it.
+    expect(existsSync(markerPath(proj))).toBe(true);
+  });
+
+  test("6: a STALE marker (mtime older than 24h) is NOT honoured, is cleaned up, and the turn BLOCKS", () => {
+    const proj = makeProject();
+    seedActive(proj);
+    writeFileSync(markerPath(proj), "pending\n", "utf-8");
+    // Backdate the marker to just past the freshness window (+1h) so it reads as
+    // an orphan left by a crashed session rather than a live gate. Derived from
+    // the shared TTL so the test tracks the hook if the window ever changes.
+    const staleAgeSec = COMPOSE_MARKER_TTL_MS / 1000 + 60 * 60;
+    const when = Date.now() / 1000 - staleAgeSec;
+    utimesSync(markerPath(proj), when, when);
+    const r = runHook(proj);
+    expect(r.rc).toBe(0);
+    // Carve-out not honoured -> the enforcement block fires again.
+    expect(r.out).toContain('"decision":"block"');
+    // The janitor removed the orphaned marker so it cannot re-disable the loop.
+    expect(existsSync(markerPath(proj))).toBe(false);
   });
 });
