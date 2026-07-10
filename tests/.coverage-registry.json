@@ -31,12 +31,12 @@
       "render-surface": 7
     },
     "coveredByClass": {
-      "function": 90,
+      "function": 93,
       "audit": 30,
       "scope": 9,
       "stage": 8,
       "hook": 11,
-      "subcommand": 75,
+      "subcommand": 76,
       "render-surface": 7
     }
   },
@@ -1118,6 +1118,10 @@
           "mechanism": "none"
         },
         {
+          "file": "tests/integration/t223-plugin-selection.test.ts",
+          "mechanism": "cli"
+        },
+        {
           "file": "tests/integration/t66.test.ts",
           "mechanism": "cli"
         },
@@ -1820,6 +1824,10 @@
         {
           "file": "tests/unit/t222-naming-enforcement.test.ts",
           "mechanism": "cli"
+        },
+        {
+          "file": "tests/unit/t224-scope-name-decoupling.test.ts",
+          "mechanism": "cli"
         }
       ],
       "status": "covered"
@@ -1894,8 +1902,13 @@
       "unitClass": "function",
       "unitId": "function:mergeComposedScopes",
       "minMechanism": "none",
-      "coveredBy": [],
-      "status": "UNCOVERED"
+      "coveredBy": [
+        {
+          "file": "tests/integration/t223-plugin-selection.test.ts",
+          "mechanism": "cli"
+        }
+      ],
+      "status": "covered"
     },
     {
       "unitClass": "function",
@@ -2141,8 +2154,13 @@
       "unitClass": "function",
       "unitId": "function:pluginsEnabled",
       "minMechanism": "none",
-      "coveredBy": [],
-      "status": "UNCOVERED"
+      "coveredBy": [
+        {
+          "file": "tests/integration/t223-plugin-selection.test.ts",
+          "mechanism": "cli"
+        }
+      ],
+      "status": "covered"
     },
     {
       "unitClass": "function",
@@ -2546,8 +2564,13 @@
       "unitClass": "function",
       "unitId": "function:selectionAwareDefaultScope",
       "minMechanism": "none",
-      "coveredBy": [],
-      "status": "UNCOVERED"
+      "coveredBy": [
+        {
+          "file": "tests/unit/t224-scope-name-decoupling.test.ts",
+          "mechanism": "cli"
+        }
+      ],
+      "status": "covered"
     },
     {
       "unitClass": "function",
@@ -5020,8 +5043,13 @@
       "unitClass": "subcommand",
       "unitId": "aidlc-utility select-plugins",
       "minMechanism": "cli",
-      "coveredBy": [],
-      "status": "UNCOVERED"
+      "coveredBy": [
+        {
+          "file": "tests/integration/t223-plugin-selection.test.ts",
+          "mechanism": "cli"
+        }
+      ],
+      "status": "covered"
     },
     {
       "unitClass": "subcommand",
