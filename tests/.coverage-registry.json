@@ -20,14 +20,14 @@
     "render-surface": "tui"
   },
   "counts": {
-    "total": 435,
+    "total": 446,
     "enumeratedByClass": {
-      "function": 217,
+      "function": 226,
       "audit": 71,
       "scope": 9,
       "stage": 32,
       "hook": 12,
-      "subcommand": 87,
+      "subcommand": 89,
       "render-surface": 7
     },
     "coveredByClass": {
@@ -36,7 +36,7 @@
       "scope": 9,
       "stage": 8,
       "hook": 11,
-      "subcommand": 74,
+      "subcommand": 75,
       "render-surface": 7
     }
   },
@@ -741,6 +741,20 @@
     },
     {
       "unitClass": "function",
+      "unitId": "function:_resetAgentsForTests",
+      "minMechanism": "none",
+      "coveredBy": [],
+      "status": "UNCOVERED"
+    },
+    {
+      "unitClass": "function",
+      "unitId": "function:_resetHarnessDataForTests",
+      "minMechanism": "none",
+      "coveredBy": [],
+      "status": "UNCOVERED"
+    },
+    {
+      "unitClass": "function",
       "unitId": "function:_resetScopeMappingForTests",
       "minMechanism": "none",
       "coveredBy": [],
@@ -826,6 +840,13 @@
         }
       ],
       "status": "covered"
+    },
+    {
+      "unitClass": "function",
+      "unitId": "function:agentsDir",
+      "minMechanism": "none",
+      "coveredBy": [],
+      "status": "UNCOVERED"
     },
     {
       "unitClass": "function",
@@ -1106,6 +1127,14 @@
         },
         {
           "file": "tests/unit/t124-scope-transpose.test.ts",
+          "mechanism": "cli"
+        },
+        {
+          "file": "tests/unit/t221-plugin-runner-naming.test.ts",
+          "mechanism": "cli"
+        },
+        {
+          "file": "tests/unit/t222-naming-enforcement.test.ts",
           "mechanism": "cli"
         }
       ],
@@ -1415,6 +1444,13 @@
     },
     {
       "unitClass": "function",
+      "unitId": "function:harnessDataPath",
+      "minMechanism": "none",
+      "coveredBy": [],
+      "status": "UNCOVERED"
+    },
+    {
+      "unitClass": "function",
       "unitId": "function:harnessDir",
       "minMechanism": "none",
       "coveredBy": [
@@ -1610,6 +1646,13 @@
     },
     {
       "unitClass": "function",
+      "unitId": "function:isPluginEnabled",
+      "minMechanism": "none",
+      "coveredBy": [],
+      "status": "UNCOVERED"
+    },
+    {
+      "unitClass": "function",
       "unitId": "function:isValidRepoName",
       "minMechanism": "none",
       "coveredBy": [],
@@ -1700,6 +1743,10 @@
           "mechanism": "none"
         },
         {
+          "file": "tests/unit/t222-naming-enforcement.test.ts",
+          "mechanism": "cli"
+        },
+        {
           "file": "tests/unit/t61.test.ts",
           "mechanism": "cli"
         }
@@ -1769,9 +1816,20 @@
         {
           "file": "tests/unit/t125-scope-files.test.ts",
           "mechanism": "cli"
+        },
+        {
+          "file": "tests/unit/t222-naming-enforcement.test.ts",
+          "mechanism": "cli"
         }
       ],
       "status": "covered"
+    },
+    {
+      "unitClass": "function",
+      "unitId": "function:loadScopeMetadataAll",
+      "minMechanism": "none",
+      "coveredBy": [],
+      "status": "UNCOVERED"
     },
     {
       "unitClass": "function",
@@ -1788,6 +1846,13 @@
     {
       "unitClass": "function",
       "unitId": "function:loadStageGraph",
+      "minMechanism": "none",
+      "coveredBy": [],
+      "status": "UNCOVERED"
+    },
+    {
+      "unitClass": "function",
+      "unitId": "function:loadStageGraphAll",
       "minMechanism": "none",
       "coveredBy": [],
       "status": "UNCOVERED"
@@ -1999,10 +2064,6 @@
       "minMechanism": "none",
       "coveredBy": [
         {
-          "file": "tests/integration/t32-stage-graph-consistency.test.ts",
-          "mechanism": "none"
-        },
-        {
           "file": "tests/integration/t38-stage-agent-cross-check.test.ts",
           "mechanism": "none"
         },
@@ -2072,6 +2133,13 @@
     {
       "unitClass": "function",
       "unitId": "function:planFilePath",
+      "minMechanism": "none",
+      "coveredBy": [],
+      "status": "UNCOVERED"
+    },
+    {
+      "unitClass": "function",
+      "unitId": "function:pluginsEnabled",
       "minMechanism": "none",
       "coveredBy": [],
       "status": "UNCOVERED"
@@ -2470,6 +2538,13 @@
     {
       "unitClass": "function",
       "unitId": "function:scopesDir",
+      "minMechanism": "none",
+      "coveredBy": [],
+      "status": "UNCOVERED"
+    },
+    {
+      "unitClass": "function",
+      "unitId": "function:selectionAwareDefaultScope",
       "minMechanism": "none",
       "coveredBy": [],
       "status": "UNCOVERED"
@@ -4707,6 +4782,10 @@
           "mechanism": "cli"
         },
         {
+          "file": "tests/unit/t222-naming-enforcement.test.ts",
+          "mechanism": "cli"
+        },
+        {
           "file": "tests/unit/t27.test.ts",
           "mechanism": "cli"
         },
@@ -4939,6 +5018,13 @@
     },
     {
       "unitClass": "subcommand",
+      "unitId": "aidlc-utility select-plugins",
+      "minMechanism": "cli",
+      "coveredBy": [],
+      "status": "UNCOVERED"
+    },
+    {
+      "unitClass": "subcommand",
       "unitId": "aidlc-utility set-status",
       "minMechanism": "cli",
       "coveredBy": [
@@ -4996,6 +5082,18 @@
         },
         {
           "file": "tests/integration/t175-space-create-memory-isolation.test.ts",
+          "mechanism": "cli"
+        }
+      ],
+      "status": "covered"
+    },
+    {
+      "unitClass": "subcommand",
+      "unitId": "aidlc-utility stage-table",
+      "minMechanism": "cli",
+      "coveredBy": [
+        {
+          "file": "tests/integration/t32-stage-graph-consistency.test.ts",
           "mechanism": "cli"
         }
       ],
