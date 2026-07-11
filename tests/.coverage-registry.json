@@ -5417,6 +5417,10 @@
       "minMechanism": "cli",
       "coveredBy": [
         {
+          "file": "tests/unit/t231-build-binaries.test.ts",
+          "mechanism": "cli"
+        },
+        {
           "file": "tests/unit/t68-version-changelog-sync.test.ts",
           "mechanism": "cli"
         }
