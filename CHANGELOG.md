@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.6] - 2026-07-12
+
+Workspace nouns gained real verbs (`list`, `switch`, `create`, and `birth`) while preserving bare-name switch sugar. Verb-shaped names are now reserved at intent and space creation, `/aidlc --doctor` flags pre-existing verb-named records as an advisory, and the Kiro CLI adapter preserves quoted multi-word workspace names. **Upgrade:** re-copy your `dist/<harness>/` shell into the project.
+
+* `/aidlc space create teamB` now creates space `teamB`; previously it attempted to switch to a space named `create`. The legacy `/aidlc space-create teamB` spelling still works.
+* `/aidlc space list` now lists spaces, and `/aidlc space list --json` or `/aidlc space --json` emits the existing structured space listing.
+* `/aidlc space switch teamB` now explicitly switches to `teamB`; bare `/aidlc space teamB` still switches as before. `/aidlc space create` and `/aidlc space switch` now return usage errors instead of treating the verb as a name.
+* `/aidlc intent list` now lists intents, and `/aidlc intent list --json` or `/aidlc intent --json` emits the existing structured intent listing.
+* `/aidlc intent switch list` now explicitly switches to an existing intent whose slug is `list`; bare `/aidlc intent <name>` still switches as before. `/aidlc intent switch` now returns a usage error instead of switching to `switch`.
+* `/aidlc intent birth --scope poc --label x` now forwards the remaining flags to `intent-birth`; previously the terminal workspace branch collapsed the command to `intent birth` and lost the flags.
+* `/aidlc intent archive foo`, `/aidlc intent rename foo`, `/aidlc intent show foo`, and the matching `space` forms now return "reserved for a future workspace verb and is not implemented yet" with guidance to use explicit `switch` to reach an existing record with that name.
+* New intent labels and space names may not be `help`, current workspace verbs, or reserved future verbs; creation fails with a reserved-name message asking for a descriptive label or team name. Existing records with those names remain reachable via explicit `intent switch <name>` or `space switch <name>`, and doctor reports them as an advisory.
+* Kiro CLI `/aidlc` verb interception now keeps double-quoted names as one argv token, so `/aidlc space create "My Space"` reaches the utility as one name.
+
 ## [2.3.5] - 2026-07-12
 
 Completes the plugin mechanism with **install-time plugin selection** and the full plugin content surface, proven at scale in a customer pilot. Plugins add, the install selects: a plugin can now ship scopes, agent personas, and knowledge alongside stages, every stage-enumerating surface is generated from the compiled graph, and a new `select-plugins` command lets an install choose which plugins' content its users see (core is the implicit `aidlc` plugin and can itself be deselected; a plugin-only install shows only that plugin's commands and scopes). The ownership frontmatter field is renamed from `bundle:` to `plugin:` (the old key is rejected with an error naming the fix). **Upgrade:** re-copy your `dist/<harness>/` shell and re-run any installed plugin's compose hook; a plugin tree still authoring `bundle:` must rename the key to `plugin:`. Existing installs without a selection are otherwise unaffected (an absent `plugins` key enables everything, and the shipped trees are byte-identical on core surfaces).
