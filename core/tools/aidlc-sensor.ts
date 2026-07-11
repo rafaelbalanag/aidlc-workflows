@@ -810,8 +810,8 @@ Subcommands:
 
 // --- main ---
 
-function main(): void {
-	const [cmd, ...args] = process.argv.slice(2);
+export function main(argv: string[]): void {
+	const [cmd, ...args] = argv;
 	if (cmd === "--help" || cmd === "-h") {
 		printHelp();
 		return;
@@ -840,4 +840,4 @@ function main(): void {
 	}
 }
 
-main();
+if (import.meta.main) main(process.argv.slice(2));

@@ -51,8 +51,8 @@ function emitAudit(
 
 let projectDir: string | undefined;
 
-function main(): void {
-  const rawArgs = process.argv.slice(2);
+export function main(argv: string[]): void {
+  const rawArgs = argv;
 
   // Extract --project-dir
   const filteredArgs: string[] = [];
@@ -84,7 +84,7 @@ function main(): void {
 }
 
 if (import.meta.main) {
-  main();
+  main(process.argv.slice(2));
 }
 
 // --- Parse named flags ---

@@ -383,8 +383,8 @@ let projectDir: string | undefined;
 let lockIntent: string | undefined;
 let lockSpace: string | undefined;
 
-function main(): void {
-  const args = process.argv.slice(2);
+export function main(argv: string[]): void {
+  const args = [...argv];
 
   // Extract --project-dir flag
   const pdIdx = args.indexOf("--project-dir");
@@ -480,7 +480,7 @@ function main(): void {
 }
 
 if (import.meta.main) {
-  main();
+  main(process.argv.slice(2));
 }
 
 // --- Subcommand handlers ---
