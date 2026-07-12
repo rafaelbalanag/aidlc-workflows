@@ -441,6 +441,60 @@ function regenerateSelectionSurfaces(projectDir: string): void {
   );
 }
 
+// A selection change must not strand a live workflow: after disable, a state
+// file whose Scope belongs to a disabled plugin makes every later /aidlc on
+// that workflow hard-error ("Unknown scope") with no in-band way out (the
+// state file's scope out-ranks --scope), and a plugin-owned EXECUTE stage
+// still pending in the plan either errors (it is Current Stage) or silently
+// vanishes from the walk. Enumerate every non-complete workflow across all
+// spaces and name each dependency on a plugin the new selection disables.
+function activeWorkflowDependencyViolations(
+  projectDir: string,
+  enabled: ReadonlySet<string>,
+): string[] {
+  const violations: string[] = [];
+  const scopeOwner = new Map<string, string>();
+  for (const [name, meta] of Object.entries(loadScopeMetadataAll())) {
+    scopeOwner.set(name, meta.plugin ?? "aidlc");
+  }
+  // Mirror stageEnabledBySelection: initialization stages are always enabled,
+  // so they can never strand a plan regardless of the selection.
+  const stageOwner = new Map<string, string>();
+  for (const stage of loadStageGraphAll()) {
+    if (stage.phase === "initialization") continue;
+    stageOwner.set(stage.slug, stage.plugin ?? "aidlc");
+  }
+  for (const space of listSpaces(projectDir)) {
+    for (const intent of listIntents(projectDir, space.name)) {
+      if (intent.status === "complete" || !intent.dirName) continue;
+      const sp = stateFilePath(projectDir, intent.dirName, space.name);
+      if (!existsSync(sp)) continue;
+      const content = readFileSync(sp, "utf-8");
+      if ((getField(content, "Status") ?? "") === "Completed") continue;
+      const where = `workflow "${intent.dirName}" (space ${space.name})`;
+      const scope = getField(content, "Scope");
+      if (scope) {
+        const owner = scopeOwner.get(scope);
+        if (owner && !enabled.has(owner)) {
+          violations.push(`${where} runs under scope "${scope}" owned by plugin "${owner}"`);
+        }
+      }
+      // Pending/active plugin-owned stages in the plan (EXECUTE rows that are
+      // not yet completed/skipped) — the walk would error on or silently drop
+      // them. Completed rows are history; they don't depend on the plugin.
+      for (const cb of parseCheckboxes(content)) {
+        if (cb.state === "completed" || cb.state === "skipped") continue;
+        if (!cb.suffix.startsWith("EXECUTE")) continue;
+        const owner = stageOwner.get(cb.slug);
+        if (owner && !enabled.has(owner)) {
+          violations.push(`${where} has pending stage "${cb.slug}" owned by plugin "${owner}"`);
+        }
+      }
+    }
+  }
+  return violations;
+}
+
 function handleSelectPlugins(projectDir: string, positional: string[]): void {
   if (positional.length === 1) {
     const selection = renderPluginSelection(pluginsEnabled());
@@ -461,6 +515,16 @@ function handleSelectPlugins(projectDir: string, positional: string[]): void {
     die(`Unknown plugin name(s): ${unknown.join(", ")}. Valid plugins: ${known.join(", ")}.`);
   }
   const names = [...new Set(parsedSelection.names)].sort();
+
+  const violations = activeWorkflowDependencyViolations(projectDir, new Set(names));
+  if (violations.length > 0) {
+    die(
+      `select-plugins refused: the new selection would strand ${violations.length} active workflow dependency(ies):\n` +
+        violations.map((v) => `  - ${v}`).join("\n") +
+        `\nComplete or park the workflow(s) first (or keep the plugin enabled), then re-run select-plugins.`,
+    );
+  }
+
   const previousSelection = renderPluginSelection(pluginsEnabled());
   const newSelection = names.join(", ");
 
@@ -1025,6 +1089,22 @@ function handleDoctor(projectDir: string): void {
           }\``
         : undefined,
     });
+
+    // Active workflows stranded by the CURRENT selection (a selection written
+    // before this guard existed, or a hand-edited harness.json): every /aidlc
+    // on such a workflow hard-errors, so doctor must not stay green.
+    if (selected !== null) {
+      const stranded = activeWorkflowDependencyViolations(projectDir, selected);
+      results.push({
+        pass: stranded.length === 0,
+        label: stranded.length === 0
+          ? "Plugin selection vs active workflows: no stranded dependencies"
+          : `Plugin selection vs active workflows: ${stranded.length} stranded dependency(ies)`,
+        fix: stranded.length > 0
+          ? `${stranded.join("; ")} - re-enable the plugin(s) with \`bun ${harnessDir()}/tools/aidlc-utility.ts select-plugins\`, or complete/park the workflow(s)`
+          : undefined,
+      });
+    }
   } catch (e) {
     results.push({
       pass: false,

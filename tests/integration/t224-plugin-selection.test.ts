@@ -202,6 +202,95 @@ describe("t224 plugin selection — install chooses visible plugin surfaces", ()
     expect(result.stderr).toContain("test-pro");
   });
 
+  // Disabling a plugin an ACTIVE workflow depends on would strand it: the
+  // state file's scope out-ranks --scope, so every later /aidlc hard-errors
+  // with no in-band recovery. select-plugins must refuse, and doctor must
+  // flag a selection (written before this guard, or hand-edited) that
+  // already strands one.
+  function seedActiveWorkflow(proj: string, scope: string, extraStageRow = ""): string {
+    const dirName = "strand-probe-deadbeef";
+    const intentDir = join(proj, "aidlc", "spaces", "default", "intents", dirName);
+    mkdirSync(intentDir, { recursive: true });
+    writeFileSync(
+      join(proj, "aidlc", "spaces", "default", "intents", "intents.json"),
+      `${JSON.stringify([{ uuid: "deadbeef-0000-4000-8000-000000000000", slug: "strand-probe", dirName, scope, status: "in-flight" }], null, 2)}\n`,
+    );
+    // The Stage Progress row delimiter is the em dash (parseCheckboxes'
+    // format), written as an escape so the byte is deliberate, not cosmetic.
+    const dash = "\u2014";
+    writeFileSync(
+      join(intentDir, "aidlc-state.md"),
+      [
+        "# AI-DLC State Tracking",
+        "",
+        "## Project Information",
+        "- **Project**: strand probe",
+        `- **Scope**: ${scope}`,
+        "",
+        "## Stage Progress",
+        "",
+        "### CONSTRUCTION PHASE",
+        `- [ ] code-generation ${dash} EXECUTE`,
+        ...(extraStageRow ? [extraStageRow] : []),
+        "",
+        "## Current Status",
+        "- **Status**: Running",
+        "",
+      ].join("\n"),
+    );
+    return intentDir;
+  }
+
+  test("select-plugins refuses to strand an active workflow's scope", () => {
+    const proj = join(tmp, "strand-scope");
+    copyClaudeInstall(proj);
+    composeTestPro(proj, pluginBuilt);
+    const intentDir = seedActiveWorkflow(proj, "test-pro-validation");
+
+    const result = runUtility(proj, ["select-plugins", "aidlc"]);
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("select-plugins refused");
+    // die() JSON-encodes the message, so quotes arrive escaped - assert on
+    // quote-free substrings.
+    expect(result.stderr).toContain("test-pro-validation");
+    expect(result.stderr).toContain("owned by plugin");
+    expect(result.stderr).toContain("Complete or park the workflow(s) first");
+
+    // A completed workflow no longer blocks the same change.
+    const state = join(intentDir, "aidlc-state.md");
+    writeFileSync(state, readFileSync(state, "utf-8").replace("- **Status**: Running", "- **Status**: Completed"));
+    const after = runUtility(proj, ["select-plugins", "aidlc"]);
+    expect(after.status).toBe(0);
+  });
+
+  test("select-plugins refuses to strand a pending plugin-owned EXECUTE stage under a core scope", () => {
+    const proj = join(tmp, "strand-stage");
+    copyClaudeInstall(proj);
+    composeTestPro(proj, pluginBuilt);
+    seedActiveWorkflow(proj, "feature", `- [ ] test-pro-integration ${"\u2014"} EXECUTE`);
+
+    const result = runUtility(proj, ["select-plugins", "aidlc"]);
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("pending stage");
+    expect(result.stderr).toContain("test-pro-integration");
+  });
+
+  test("doctor flags a selection that already strands an active workflow", () => {
+    const proj = join(tmp, "strand-doctor");
+    copyClaudeInstall(proj);
+    composeTestPro(proj, pluginBuilt);
+    seedActiveWorkflow(proj, "test-pro-validation");
+    // Simulate a pre-guard selection: write it directly, then recompile the
+    // surfaces the way select-plugins would have.
+    const harness = JSON.parse(readFileSync(harnessPath(proj), "utf-8"));
+    harness.plugins = ["aidlc"];
+    writeFileSync(harnessPath(proj), `${JSON.stringify(harness, null, 2)}\n`);
+    const doctor = runUtility(proj, ["doctor"]);
+    const out = `${doctor.stdout ?? ""}${doctor.stderr ?? ""}`;
+    expect(out).toContain("Plugin selection vs active workflows: 1 stranded dependency(ies)");
+    expect(out).toContain('scope "test-pro-validation" owned by plugin "test-pro"');
+  });
+
   test("select-plugins skips runner regeneration when the harness skills dir is absent", () => {
     const noSkillsProj = join(tmp, "no-skills");
     copyClaudeInstall(noSkillsProj);
