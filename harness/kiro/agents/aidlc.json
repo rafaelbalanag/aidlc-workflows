@@ -10,7 +10,7 @@
     "todo_list",
     "thinking",
     "subagent",
-    "mcp::code-knowledge-base::*"
+    "@code-knowledge-base"
   ],
   "allowedTools": [
     "fs_read",
