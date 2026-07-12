@@ -441,6 +441,145 @@ function regenerateSelectionSurfaces(projectDir: string): void {
   );
 }
 
+// --- disable-time contribution strip -----------------------------------------
+//
+// Compose merges a plugin's structural adds (produces/sensors/consumes/
+// required_sections) into CORE stage source, where no selection filter
+// reaches, and records what it actually added in a per-plugin sidecar
+// (tools/data/plugin-contrib-<key>.json). Prose fragments carry their own
+// sentinel markers. On disable, select-plugins strips both, so a disabled
+// plugin's contributions stop steering enabled stages; re-enabling restores
+// them on the next session start (the plugin's compose hook re-merges).
+
+interface StageContribRecord {
+  produces?: string[];
+  sensors?: string[];
+  consumes?: string[];
+  required_sections?: string[];
+  required_sections_created?: boolean;
+}
+
+function pluginContribSidecarPath(plugin: string): string {
+  return join(TOOLS_DIR, "data", `plugin-contrib-${plugin.replace(/[^\w.-]/g, "_")}.json`);
+}
+
+function installedStagesRoot(): string {
+  return join(TOOLS_DIR, "..", "aidlc-common", "stages");
+}
+
+// Remove recorded values from a `field:` block. An emptied block collapses to
+// the inline `field: []` form (the shape compose's merge expanded from); a
+// created-by-compose required_sections field is deleted outright.
+function removeListValues(content: string, field: string, values: ReadonlySet<string>, dropEmptyField: boolean): string {
+  const blockRe = new RegExp(`^${field}:\\n((?:  - .+\\n)*)`, "m");
+  const m = content.match(blockRe);
+  if (!m) return content;
+  const kept = [...m[1].matchAll(/^  - (.+)$/gm)]
+    .map((x) => x[1])
+    .filter((v) => {
+      const bare = v.trim().replace(/^"(.*)"$/, "$1").replace(/^'(.*)'$/, "$1");
+      return !values.has(bare) && !values.has(v.trim());
+    });
+  const replacement = kept.length > 0
+    ? `${field}:\n${kept.map((v) => `  - ${v}`).join("\n")}\n`
+    : dropEmptyField ? "" : `${field}: []\n`;
+  return content.replace(blockRe, replacement);
+}
+
+function removeConsumesEntries(content: string, artifacts: ReadonlySet<string>): string {
+  const blockRe = /^consumes:\n((?:  - artifact:.*\n(?:    (?:required|conditional_on):.*\n)*)*)/m;
+  const m = content.match(blockRe);
+  if (!m) return content;
+  const kept = [...m[1].matchAll(/^  - artifact:\s*([\w-]+).*\n(?:    (?:required|conditional_on):.*\n)*/gm)]
+    .filter((entry) => !artifacts.has(entry[1]))
+    .map((entry) => entry[0]);
+  const replacement = kept.length > 0 ? `consumes:\n${kept.join("")}` : "consumes: []\n";
+  return content.replace(blockRe, replacement);
+}
+
+// Strip every sentinel-marked prose fragment this plugin spliced. The open
+// and close markers carry the plugin name, so removal needs no sidecar.
+// Anchors may themselves contain colons (after-step:9, in:Sensors), so the
+// anchor segment is matched non-greedily up to the trailing :order:hash.
+function removePluginFragments(content: string, plugin: string): string {
+  const pE = escapeRegex(plugin);
+  const openRe = new RegExp(`<!-- plugin:${pE}:.+?:\\d+:[0-9a-f]+ -->`, "g");
+  let out = content;
+  let match = openRe.exec(out);
+  while (match !== null) {
+    const close = `<!-- /${match[0].slice(5)}`;
+    const closeIdx = out.indexOf(close, match.index);
+    if (closeIdx === -1) break; // unpaired marker: leave as-is (doctor territory)
+    const end = closeIdx + close.length;
+    out = `${out.slice(0, match.index)}${out.slice(end)}`.replace(/\n{3,}/g, "\n\n");
+    openRe.lastIndex = 0;
+    match = openRe.exec(out);
+  }
+  return out;
+}
+
+// Strip the merged contributions of every named plugin from installed stage
+// source. Mutated stage files are snapshotted into `snapshots` FIRST so the
+// caller's rollback restores them; consumed sidecars are snapshotted then
+// deleted (compose re-records on re-enable).
+function stripDisabledPluginContributions(
+  plugins: readonly string[],
+  snapshots: FileSnapshot[],
+): string[] {
+  const stagesRoot = installedStagesRoot();
+  const touched = new Set<string>();
+  const snapshotOnce = (path: string): void => {
+    if (touched.has(path)) return;
+    snapshots.push(snapshotFile(path));
+    touched.add(path);
+  };
+  const stripped: string[] = [];
+  for (const plugin of plugins) {
+    const sidecar = pluginContribSidecarPath(plugin);
+    let manifest: Record<string, StageContribRecord> = {};
+    if (existsSync(sidecar)) {
+      try {
+        const parsed = JSON.parse(readFileSync(sidecar, "utf-8"));
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) manifest = parsed;
+      } catch {
+        // Unreadable sidecar: fragments still strip below; structural adds stay.
+      }
+    }
+    let pluginTouched = false;
+    for (const phase of PHASES) {
+      const dir = join(stagesRoot, phase);
+      if (!existsSync(dir)) continue;
+      for (const f of readdirSync(dir).filter((name) => name.endsWith(".md")).sort()) {
+        const path = join(dir, f);
+        const before = readFileSync(path, "utf-8");
+        let content = before;
+        const record = manifest[f.replace(/\.md$/, "")];
+        if (record) {
+          if (record.produces?.length) content = removeListValues(content, "produces", new Set(record.produces), false);
+          if (record.sensors?.length) content = removeListValues(content, "sensors", new Set(record.sensors), false);
+          if (record.consumes?.length) content = removeConsumesEntries(content, new Set(record.consumes));
+          if (record.required_sections?.length) {
+            content = removeListValues(content, "required_sections", new Set(record.required_sections), record.required_sections_created === true);
+          }
+        }
+        content = removePluginFragments(content, plugin);
+        if (content !== before) {
+          snapshotOnce(path);
+          writeFileSync(path, content, "utf-8");
+          pluginTouched = true;
+        }
+      }
+    }
+    if (existsSync(sidecar)) {
+      snapshotOnce(sidecar);
+      rmSync(sidecar, { force: true });
+      pluginTouched = true;
+    }
+    if (pluginTouched) stripped.push(plugin);
+  }
+  return stripped;
+}
+
 // A selection change must not strand a live workflow: after disable, a state
 // file whose Scope belongs to a disabled plugin makes every later /aidlc on
 // that workflow hard-error ("Unknown scope") with no in-band way out (the
@@ -527,6 +666,10 @@ function handleSelectPlugins(projectDir: string, positional: string[]): void {
 
   const previousSelection = renderPluginSelection(pluginsEnabled());
   const newSelection = names.join(", ");
+  const nameSet = new Set(names);
+  // Plugins this change DISABLES (known but not selected; the implicit core
+  // plugin has no composed contributions to strip).
+  const disabling = known.filter((n) => n !== "aidlc" && !nameSet.has(n));
 
   const snapshots = [
     snapshotFile(harnessDataPath()),
@@ -535,12 +678,23 @@ function handleSelectPlugins(projectDir: string, positional: string[]): void {
   ];
 
   try {
+    // Strip disabled plugins' merged contributions BEFORE recompiling, so the
+    // regenerated graph no longer carries their produces/sensors/consumes on
+    // core stages. Mutated stage files join `snapshots`, so the catch-side
+    // rollback restores them too. Re-enabling restores contributions on the
+    // next session start (the plugin's own compose hook re-merges).
+    const strippedPlugins = stripDisabledPluginContributions(disabling, snapshots);
     writePluginSelection(names);
     regenerateSelectionSurfaces(projectDir);
     appendAuditEvent(projectDir, "PLUGIN_SELECTION_CHANGED", {
       "Previous Selection": previousSelection,
       "New Selection": newSelection,
     });
+    if (strippedPlugins.length > 0) {
+      process.stdout.write(
+        `Stripped merged contributions of disabled plugin(s): ${strippedPlugins.join(", ")} (re-enabling restores them on the next session start)\n`,
+      );
+    }
     process.stdout.write(`Enabled plugins: ${names.join(", ")}\n`);
   } catch (err) {
     const original = errorMessage(err);
@@ -550,7 +704,7 @@ function handleSelectPlugins(projectDir: string, positional: string[]): void {
       resetSelectionSensitiveCaches();
       regenerateSelectionSurfaces(projectDir);
       recoveryMessage =
-        " Restored harness.json, stage-graph.json, and scope-grid.json, then re-ran the regeneration chain against the restored selection.";
+        " Restored harness.json, stage-graph.json, scope-grid.json, and any stripped stage files, then re-ran the regeneration chain against the restored selection.";
     } catch (recoveryErr) {
       recoveryMessage =
         ` Restore was attempted, but regeneration against the restored selection also failed: ${errorMessage(recoveryErr)}.`;

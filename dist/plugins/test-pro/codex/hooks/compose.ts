@@ -469,10 +469,14 @@ function frontmatter(content: string): string {
 // Append items to a top-level list field, or replace the inline-empty `field: []`
 // form with a block (fixes the silent-drop asymmetry, review #5). Idempotent.
 // Returns the (possibly unchanged) content; logs when a field is absent entirely.
-function mergeListField(content: string, field: string, items: string[], target: string): string {
+// `added` (when given) collects the values THIS call actually wrote — the
+// contribution sidecar records actually-added entries, never declared ones, so
+// a later removal can't strip a value core (or another plugin) already had.
+function mergeListField(content: string, field: string, items: string[], target: string, added?: string[]): string {
   if (items.length === 0) return content;
   const emptyRe = new RegExp(`^${field}:\\s*\\[\\s*\\]\\s*$`, "m");
   if (emptyRe.test(content)) {
+    added?.push(...items);
     return content.replace(emptyRe, `${field}:\n` + items.map((i) => `  - ${i}`).join("\n"));
   }
   const blockRe = new RegExp(`^(${field}:\\n(?:  - .+\\n)*)`, "m");
@@ -484,19 +488,21 @@ function mergeListField(content: string, field: string, items: string[], target:
   const existing = new Set([...m[1].matchAll(/^  - (.+)$/gm)].map((x) => x[1].trim()));
   const toAdd = items.filter((i) => !existing.has(i));
   if (toAdd.length === 0) return content;
+  added?.push(...toAdd);
   return content.replace(blockRe, m[1] + toAdd.map((i) => `  - ${i}`).join("\n") + "\n");
 }
 
 // Append consumes objects (artifact + required + optional conditional_on).
 // Handles block + `consumes: []`.
 type ConsumeEntry = { artifact: string; required: boolean; conditional_on?: string };
-function mergeConsumes(content: string, entries: ConsumeEntry[], target: string): string {
+function mergeConsumes(content: string, entries: ConsumeEntry[], target: string, added?: string[]): string {
   if (entries.length === 0) return content;
   const render = (e: ConsumeEntry) =>
     `  - artifact: ${e.artifact}\n    required: ${e.required}` +
     (e.conditional_on ? `\n    conditional_on: ${e.conditional_on}` : "");
   const emptyRe = /^consumes:\s*\[\s*\]\s*$/m;
   if (emptyRe.test(content)) {
+    added?.push(...entries.map((e) => e.artifact));
     return content.replace(emptyRe, "consumes:\n" + entries.map(render).join("\n"));
   }
   // Each entry is `- artifact:` plus every following indented continuation line
@@ -513,6 +519,7 @@ function mergeConsumes(content: string, entries: ConsumeEntry[], target: string)
   const existing = new Set([...m[1].matchAll(/- artifact:\s*([\w-]+)/g)].map((x) => x[1]));
   const toAdd = entries.filter((e) => !existing.has(e.artifact));
   if (toAdd.length === 0) return content;
+  added?.push(...toAdd.map((e) => e.artifact));
   return content.replace(blockRe, m[1] + toAdd.map(render).join("\n") + "\n");
 }
 
@@ -520,11 +527,14 @@ function mergeConsumes(content: string, entries: ConsumeEntry[], target: string)
 // produces/sensors, a core stage often has NO required_sections field, so this
 // ADDS the field (before the closing frontmatter `---`) when absent, appends to
 // the block form, and replaces the inline-empty `[]` form. Idempotent by value.
-function mergeRequiredSections(content: string, items: string[], target: string): string {
+// `meta.created` is set when this call ADDED the field itself, so a later
+// removal knows to delete the whole field rather than leave an empty block.
+function mergeRequiredSections(content: string, items: string[], target: string, added?: string[], meta?: { created?: boolean }): string {
   if (items.length === 0) return content;
   const render = (list: string[]) => list.map((s) => `  - "${s}"`).join("\n");
   const emptyRe = /^required_sections:\s*\[\s*\]\s*$/m;
   if (emptyRe.test(content)) {
+    added?.push(...items);
     return content.replace(emptyRe, "required_sections:\n" + render(items));
   }
   const blockRe = /^(required_sections:\n(?:  - .+\n)*)/m;
@@ -533,6 +543,7 @@ function mergeRequiredSections(content: string, items: string[], target: string)
     const existing = new Set([...m[1].matchAll(/^  - (.+?)\s*$/gm)].map((x) => x[1].replace(/^"(.*)"$/, "$1").replace(/^'(.*)'$/, "$1")));
     const toAdd = items.filter((s) => !existing.has(s));
     if (toAdd.length === 0) return content;
+    added?.push(...toAdd);
     return content.replace(blockRe, m[1] + render(toAdd) + "\n");
   }
   // Field absent — insert it just before the closing frontmatter `---`. The
@@ -544,6 +555,8 @@ function mergeRequiredSections(content: string, items: string[], target: string)
     recordDrop(`contribution to ${target}: cannot add required_sections (no frontmatter block)`);
     return content;
   }
+  added?.push(...items);
+  if (meta) meta.created = true;
   const insertAt = fmClose.index! + fmClose[0].lastIndexOf("---");
   return content.slice(0, insertAt) + "required_sections:\n" + render(items) + "\n" + content.slice(insertAt);
 }
@@ -687,11 +700,43 @@ try {
   // it into a stage an older engine can't parse would break every later compile.
   const requiredSectionsSafe = await installedSchemaAccepts("required_sections", ["Probe Section"]);
   const contribRoot = join(PLUGIN_ROOT, "contributions");
+  // Per-plugin sidecar of what compose ACTUALLY merged into core stage source
+  // (structural adds carry no in-file provenance, unlike the sentinel-marked
+  // prose fragments), keyed by target stage. select-plugins reads it to strip
+  // a disabled plugin's merged entries — without it, disable left the plugin's
+  // produces/sensors/consumes welded into enabled core stages. Accumulated
+  // across re-runs: entries this run added are unioned into any prior record
+  // (an idempotent re-compose adds nothing and must not erase the record).
+  type StageContribRecord = { produces?: string[]; sensors?: string[]; consumes?: string[]; required_sections?: string[]; required_sections_created?: boolean };
+  const contribManifestPath = join(HARNESS_DIR, "tools", "data", `plugin-contrib-${PLUGIN_KEY}.json`);
+  const contribManifest: Record<string, StageContribRecord> = (() => {
+    try {
+      const parsed = JSON.parse(readFileSync(contribManifestPath, "utf-8"));
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    } catch { return {}; }
+  })();
+  const recordContrib = (target: string, field: keyof StageContribRecord, values: string[]): void => {
+    if (values.length === 0) return;
+    const rec = (contribManifest[target] ??= {});
+    if (field === "required_sections_created") return; // set directly, not via list
+    const prior = new Set((rec[field] as string[] | undefined) ?? []);
+    for (const v of values) prior.add(v);
+    (rec[field] as string[]) = [...prior].sort();
+  };
+  let contribManifestDirty = false;
   // Fragment keys seen across ALL contribution files this run, so a same
   // (target, plugin, anchor, order) arriving from a SECOND file drops-with-log
   // rather than silently last-writer-winning via the hash-upgrade path (round-3).
   const seenFragKeys = new Set<string>();
-  for (const phase of existsSync(contribRoot) ? readdirSync(contribRoot) : []) {
+  // Contributions merge ONLY for an enabled plugin. Stage/scope/agent copies
+  // are safe under a disabling selection (runtime loaders filter them), but
+  // merged contributions land in CORE stage source where no selection filter
+  // reaches — so composing them while disabled would weld a disabled plugin's
+  // produces/sensors/prose into enabled stages (and undo select-plugins'
+  // disable-time strip on the very next session start). The advisory drop at
+  // the top of this run already names the select-plugins command to enable.
+  const contribPhases = pluginEnabledBySelection() && existsSync(contribRoot) ? readdirSync(contribRoot) : [];
+  for (const phase of contribPhases) {
     const phaseDir = join(contribRoot, phase);
     let files: string[];
     try { files = readdirSync(phaseDir); } catch { continue; }
@@ -793,15 +838,25 @@ try {
       // stage (mixed endings). Contribution content is already normalized above.
       let stageContent = readFileSync(stageFile, "utf-8").replace(/\r\n/g, "\n");
       const before = stageContent;
-      stageContent = mergeListField(stageContent, "produces", listOf("produces"), target);
-      stageContent = mergeListField(stageContent, "sensors", listOf("sensors"), target);
-      stageContent = mergeConsumes(stageContent, consumes, target);
+      const addedProduces: string[] = [], addedSensors: string[] = [], addedConsumes: string[] = [], addedSections: string[] = [];
+      const sectionsMeta: { created?: boolean } = {};
+      stageContent = mergeListField(stageContent, "produces", listOf("produces"), target, addedProduces);
+      stageContent = mergeListField(stageContent, "sensors", listOf("sensors"), target, addedSensors);
+      stageContent = mergeConsumes(stageContent, consumes, target, addedConsumes);
       // Only merge required_sections if the installed engine accepts the key —
       // otherwise skip + drop-log rather than break the install's next compile.
       if (requiredSections.length > 0 && !requiredSectionsSafe) {
         recordDrop(`contribution to ${target}: installed engine does not accept 'required_sections' (older dist); skipped its merge — re-copy your dist/<harness> shell to enable it`, "advisory");
       } else {
-        stageContent = mergeRequiredSections(stageContent, requiredSections, target);
+        stageContent = mergeRequiredSections(stageContent, requiredSections, target, addedSections, sectionsMeta);
+      }
+      recordContrib(target, "produces", addedProduces);
+      recordContrib(target, "sensors", addedSensors);
+      recordContrib(target, "consumes", addedConsumes);
+      recordContrib(target, "required_sections", addedSections);
+      if (sectionsMeta.created) (contribManifest[target] ??= {}).required_sections_created = true;
+      if (addedProduces.length || addedSensors.length || addedConsumes.length || addedSections.length) {
+        contribManifestDirty = true;
       }
 
       // prose fragments — paired to their `## fragment: <anchor>` body block BY
@@ -876,6 +931,18 @@ try {
         writeFileSync(stageFile, stageContent);
         changed = true;
       }
+    }
+  }
+
+  // Persist the contribution sidecar so select-plugins can strip this
+  // plugin's merged structural adds on disable. Written only when this run
+  // added something (idempotent re-runs leave the prior record untouched).
+  if (contribManifestDirty) {
+    try {
+      mkdirSync(join(HARNESS_DIR, "tools", "data"), { recursive: true });
+      writeFileSync(contribManifestPath, `${JSON.stringify(contribManifest, null, 2)}\n`);
+    } catch (e) {
+      recordDrop(`could not write the contribution sidecar ${relative(PROJECT_DIR, contribManifestPath)}: ${e instanceof Error ? e.message : String(e)} — disabling this plugin will not strip its merged contributions`, "advisory");
     }
   }
 

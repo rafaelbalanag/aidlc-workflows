@@ -194,6 +194,59 @@ describe("t224 plugin selection — install chooses visible plugin surfaces", ()
     expect(graph(project).find((s) => s.slug === "test-pro-integration")?.enabled).toBe(false);
   });
 
+  // The orphan-contribution case: disabling a plugin must also remove what
+  // compose merged into CORE stage source (structural adds via the sidecar,
+  // prose fragments via their sentinel markers) - otherwise the disabled
+  // plugin keeps steering enabled stages. Re-composing after re-enable
+  // restores everything.
+  test("disabling a plugin strips its merged contributions; recompose restores them", () => {
+    const proj = join(tmp, "strip");
+    copyClaudeInstall(proj);
+    composeTestPro(proj, pluginBuilt);
+
+    const stagePath = join(proj, ".claude", "aidlc-common", "stages", "construction", "build-and-test.md");
+    const sidecar = join(proj, ".claude", "tools", "data", "plugin-contrib-test-pro.json");
+    const composed = readFileSync(stagePath, "utf-8");
+    expect(composed).toContain("test-pro-regression-suite");
+    expect(composed).toContain("Step 9a (test-pro)");
+    expect(existsSync(sidecar)).toBe(true);
+
+    const disable = runUtility(proj, ["select-plugins", "aidlc"]);
+    expect(disable.status).toBe(0);
+    expect(disable.stdout).toContain("Stripped merged contributions of disabled plugin(s): test-pro");
+    const stripped = readFileSync(stagePath, "utf-8");
+    expect(stripped).not.toContain("test-pro-regression-suite");
+    expect(stripped).not.toContain("Step 9a (test-pro)");
+    expect(stripped).not.toContain("<!-- plugin:test-pro:");
+    expect(existsSync(sidecar)).toBe(false);
+    // The compiled core node no longer carries the plugin's merged entries.
+    const bat = graph(proj).find((s) => s.slug === "build-and-test");
+    expect(bat?.produces).not.toContain("test-pro-regression-suite");
+    expect((bat?.sensors ?? []).includes("coverage-threshold")).toBe(false);
+
+    // Re-enable + re-compose = byte-identical restoration of the merges.
+    const enable = runUtility(proj, ["select-plugins", "aidlc,test-pro"]);
+    expect(enable.status).toBe(0);
+    composeTestPro(proj, pluginBuilt);
+    const restored = readFileSync(stagePath, "utf-8");
+    expect(restored).toBe(composed);
+    expect(existsSync(sidecar)).toBe(true);
+  });
+
+  test("compose does not merge contributions for a plugin the selection disables", () => {
+    const proj = join(tmp, "no-merge-disabled");
+    copyClaudeInstall(proj);
+    // Pre-select core only, THEN compose: the plugin's stages copy (filtered
+    // at runtime) but its contributions must NOT weld into core stage source.
+    const harness = JSON.parse(readFileSync(harnessPath(proj), "utf-8"));
+    harness.plugins = ["aidlc"];
+    writeFileSync(harnessPath(proj), `${JSON.stringify(harness, null, 2)}\n`);
+    composeTestPro(proj, pluginBuilt);
+    const body = readFileSync(join(proj, ".claude", "aidlc-common", "stages", "construction", "build-and-test.md"), "utf-8");
+    expect(body).not.toContain("test-pro-regression-suite");
+    expect(body).not.toContain("Step 9a (test-pro)");
+  });
+
   test("unknown plugin names hard-fail and list valid names", () => {
     const result = runUtility(project, ["select-plugins", "aidlc,nope"]);
     expect(result.status).not.toBe(0);
@@ -319,7 +372,7 @@ describe("t224 plugin selection — install chooses visible plugin surfaces", ()
 
     const result = runUtility(project, ["select-plugins", "aidlc,test-pro"]);
     expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain("Restored harness.json, stage-graph.json, and scope-grid.json");
+    expect(result.stderr).toContain("Restored harness.json, stage-graph.json, scope-grid.json");
     expect(readFileSync(harnessPath(project), "utf-8")).toBe(beforeHarness);
     expect(readFileSync(graphPath(project), "utf-8")).toBe(beforeGraph);
     expect(readFileSync(gridPath(project), "utf-8")).toBe(beforeGrid);
