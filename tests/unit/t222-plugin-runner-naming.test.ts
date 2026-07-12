@@ -220,6 +220,16 @@ describe("t222 plugin ownership and runner naming", () => {
     ).toThrow(/plugin "aidlc"; omit plugin for core stages/);
   });
 
+  test("compile rejects an aidlc--prefixed plugin name (core runner-path collision)", () => {
+    // runnerDirName returns the bare slug for plugin stages and aidlc-<slug>
+    // for core, so a plugin named aidlc-<x> lands its runners on core paths.
+    expect(() =>
+      compileFixture({
+        "aidlc-pro-check": stageFrontmatter("aidlc-pro-check", "plugin: aidlc-pro"),
+      }),
+    ).toThrow(/plugin "aidlc-pro".*"aidlc-" prefix is reserved for core.*Rename the plugin/);
+  });
+
   test("stage runner names are core-prefixed for core stages and bare for plugin stages", () => {
     const project = setupIntegrationProject({ noAidlcDocs: true });
     tempDirs.push(project);

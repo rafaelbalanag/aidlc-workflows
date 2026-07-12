@@ -3147,7 +3147,18 @@ export function loadScopeMetadataAll(): Record<string, ScopeMetadata> {
       skeleton: false,
     };
     const plugin = scalarField(fm, "plugin");
-    if (plugin) meta.plugin = plugin;
+    if (plugin) {
+      // `aidlc-` is core's namespace: scope-runner dirs are `aidlc-<name>` for
+      // core scopes but the bare name for plugin scopes, so an aidlc--prefixed
+      // plugin would land its runner on a core path and silently clobber it
+      // (same invariant compile enforces for stage frontmatter).
+      if (plugin.startsWith("aidlc-")) {
+        throw new Error(
+          `Scope file ${filePath} declares plugin "${plugin}"; the "aidlc-" prefix is reserved for core (it collides with core runner paths). Rename the plugin.`
+        );
+      }
+      meta.plugin = plugin;
+    }
     const ts = scalarField(fm, "testStrategy");
     if (ts) meta.testStrategy = ts;
     const runner = scalarField(fm, "runner");

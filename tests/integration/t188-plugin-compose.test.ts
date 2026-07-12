@@ -762,6 +762,31 @@ describe("t188 plugin compose — emit + compose the contribution seam", () => {
     expect(compile.status).toBe(0);
   });
 
+  test("an aidlc--prefixed plugin name is refused at compose copy time (runner-path collision)", () => {
+    const collidingStage = [
+      "---", "slug: aidlc-pro-check", "phase: construction", "execution: ALWAYS",
+      "condition: always", "lead_agent: aidlc-quality-agent", "support_agents: []",
+      "mode: inline", "produces: []", "consumes: []", "requires_stage: []",
+      "inputs: x", "outputs: y", "plugin: aidlc-pro", "---", "", "# Colliding stage", "",
+    ].join("\n");
+    const { drops, proj } = composeSynthetic("aidlc-pro", {
+      "stages/construction/aidlc-pro-check.md": collidingStage,
+    });
+    expect(existsSync(join(proj, ".claude", "aidlc-common", "stages", "construction", "aidlc-pro-check.md"))).toBe(false);
+    expect(drops).toContain('"aidlc-" prefix is reserved for core');
+  });
+
+  test("packager refuses an aidlc--prefixed plugin name", () => {
+    const out = mkdtempSync(join(tmp, "aidlc-named-out-"));
+    const r = spawnSync(BUN, [PACKAGE_TS, "plugin", "build", "aidlc-pro", "claude", join(out, "proj")], {
+      cwd: REPO_ROOT,
+      encoding: "utf-8",
+      timeout: TIMEOUT_MS - 5_000,
+    });
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain('plugin name "aidlc-pro" is reserved');
+  });
+
   test("a frontmatter-only (empty-body) plugin stage file is skipped at copy time", () => {
     const deadStage = [
       "---", "slug: syn-dead-stage", "phase: construction", "execution: ALWAYS",

@@ -327,6 +327,17 @@ function installedNameCollisionPrecheck(dst: string, kind: "agents" | "scopes"):
   const installedByName = installedNameRoster(dst);
   return ({ file, rel, dest, content }) => {
     if (!file.endsWith(".md")) return true;
+    // `aidlc-` is core's namespace: a scope declaring an aidlc--prefixed
+    // plugin: would generate a runner dir on core's `aidlc-<name>` path and
+    // silently clobber it. Reject the file, mirroring the compile-side guard.
+    const declaredPlugin = frontmatter(content).match(/^plugin:\s*(.+)$/m)?.[1].trim();
+    if (declaredPlugin?.startsWith("aidlc-")) {
+      recordDrop(
+        `plugin "${PLUGIN_NAME}" ${kind} file "${relative(PLUGIN_ROOT, file)}" declares plugin "${declaredPlugin}"; the "aidlc-" prefix is reserved for core (it collides with core runner paths); not copied`,
+        "degraded",
+      );
+      return false;
+    }
     const name = frontmatterName(content);
     if (!name) return true;
     const collidingFile = installedByName.get(name);
@@ -378,6 +389,21 @@ async function installedStageSchemaPrecheck(): Promise<CopyPrecheck> {
       const body = content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "");
       if (body.trim().length === 0) {
         errors = ["stage body is empty after the frontmatter fence (a behaviorally dead stage)"];
+      }
+    }
+    // Mirror compile's ownership invariants (aidlc-graph.ts) — they are
+    // compile-time THROWS, so a landed file violating them bricks the whole
+    // graph compile exactly like a schema-invalid one.
+    if (errors.length === 0) {
+      const fmBlock = frontmatter(content);
+      const declaredPlugin = fmBlock.match(/^plugin:\s*(.+)$/m)?.[1].trim();
+      const declaredSlug = fmBlock.match(/^slug:\s*(.+)$/m)?.[1].trim() ?? "";
+      if (declaredPlugin === "aidlc") {
+        errors = ['declares plugin "aidlc"; omit plugin for core stages'];
+      } else if (declaredPlugin?.startsWith("aidlc-")) {
+        errors = [`declares plugin "${declaredPlugin}"; the "aidlc-" prefix is reserved for core (a plugin named aidlc-<x> collides with core runner paths)`];
+      } else if (declaredPlugin && !declaredSlug.startsWith(`${declaredPlugin}-`)) {
+        errors = [`slug "${declaredSlug}" does not start with "${declaredPlugin}-" (plugin-owned stage slugs must carry the plugin prefix)`];
       }
     }
     if (errors.length === 0) return true;

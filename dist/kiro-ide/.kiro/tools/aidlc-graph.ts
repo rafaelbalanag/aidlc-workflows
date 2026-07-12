@@ -1575,6 +1575,15 @@ export function compileStageGraph(): {
             `${filePath}: stage "${slug}" declares plugin "aidlc"; omit plugin for core stages.`
           );
         }
+        // `aidlc-` is core's namespace: runner dirs are `aidlc-<slug>` for core
+        // but the bare slug for plugin stages, so a plugin named `aidlc-<x>`
+        // generates runner paths identical to core's and silently clobbers them
+        // (/aidlc-<x>-... routes to the wrong stage).
+        if (plugin.startsWith("aidlc-")) {
+          throw new Error(
+            `${filePath}: stage "${slug}" declares plugin "${plugin}"; the "aidlc-" prefix is reserved for core (a plugin named aidlc-<x> collides with core runner paths). Rename the plugin.`
+          );
+        }
         if (!slug.startsWith(`${plugin}-`)) {
           throw new Error(
             `${filePath}: stage "${slug}" declares plugin "${plugin}", but plugin-owned stage slugs must start with "${plugin}-". Rename the slug or fix the plugin field.`

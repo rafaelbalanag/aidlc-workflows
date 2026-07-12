@@ -814,9 +814,21 @@ const PLUGINS_ROOT = join(REPO_ROOT, "plugins");
 
 function discoverPluginNames(): string[] {
   if (!existsSync(PLUGINS_ROOT)) return [];
-  return readdirSync(PLUGINS_ROOT)
+  const names = readdirSync(PLUGINS_ROOT)
     .filter((n) => existsSync(join(PLUGINS_ROOT, n, ".aidlc-plugin", "plugin.json")))
     .sort();
+  // `aidlc` and `aidlc-*` are core's namespace: `aidlc` is the implicit core
+  // plugin in selection, and an `aidlc-<x>` plugin's runner dirs land on core
+  // runner paths (runner-gen uses the bare slug for plugin stages but
+  // `aidlc-<slug>` for core), silently clobbering them.
+  for (const n of names) {
+    if (n === "aidlc" || n.startsWith("aidlc-")) {
+      throw new Error(
+        `plugins/${n}: plugin names must not be "aidlc" or start with "aidlc-" (reserved for core; an aidlc-<x> plugin collides with core runner paths). Rename the plugin directory.`
+      );
+    }
+  }
+  return names;
 }
 
 // Per-harness plugin projection descriptor, DERIVED from each harness's own
@@ -1010,6 +1022,12 @@ if (argv[0] === "plugin" && argv[1] === "build") {
     process.exit(1);
   }
   // Proper usage errors, never a raw ENOENT/rmSync stack (round-3).
+  // Reserved-name check FIRST so the error names the real problem even when
+  // the directory doesn't exist yet (same rule discoverPluginNames enforces).
+  if (pluginName === "aidlc" || pluginName.startsWith("aidlc-")) {
+    console.error(`plugin name "${pluginName}" is reserved: names must not be "aidlc" or start with "aidlc-" (an aidlc-<x> plugin collides with core runner paths). Rename the plugin.`);
+    process.exit(1);
+  }
   if (!discoverPluginNames().includes(pluginName)) {
     console.error(`unknown plugin "${pluginName}" (have: ${discoverPluginNames().join(", ") || "none"})`);
     process.exit(1);
