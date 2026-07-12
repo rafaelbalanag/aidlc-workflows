@@ -339,6 +339,56 @@ function installedNameCollisionPrecheck(dst: string, kind: "agents" | "scopes"):
   };
 }
 
+// Validate a plugin stage file against the INSTALLED engine's schema before
+// copying it into the install. Compile is all-or-nothing — aidlc-graph.ts
+// throws on the first schema-invalid stage file — so one bad copy (e.g. a
+// stale plugin tree still authoring the renamed bundle: key) would brick the
+// install's EVERY later graph compile until the file is hand-deleted.
+// Skip-and-drop instead, naming the file and the validator's errors, so the
+// bad stage never lands and the rest of the plugin composes normally. A
+// frontmatter-only stage (empty body) is dropped the same way: it compiles
+// and routes while being behaviorally dead. Fails OPEN (copies) when the
+// installed lib can't be loaded — a partial install already can't compile,
+// so we don't add a second failure mode.
+// Slugs the schema precheck refused, so the "did my stages reach the compiled
+// graph?" self-heal probe below doesn't see a deliberately-dropped stage as a
+// failed compile and force a recompile every session.
+const schemaDroppedStageSlugs = new Set<string>();
+async function installedStageSchemaPrecheck(): Promise<CopyPrecheck> {
+  let parse: ((raw: string) => Record<string, unknown>) | null = null;
+  let validate: ((obj: unknown) => { valid: boolean; errors?: string[] }) | null = null;
+  try {
+    const lib = await import(join(HARNESS_DIR, "tools", "aidlc-lib.ts"));
+    const schema = await import(join(HARNESS_DIR, "tools", "aidlc-stage-schema.ts"));
+    if (typeof lib.parseStageFrontmatter === "function" && typeof schema.validateStageFrontmatter === "function") {
+      parse = lib.parseStageFrontmatter;
+      validate = schema.validateStageFrontmatter;
+    }
+  } catch { /* fail open (see note above) */ }
+  return ({ file, rel, content }) => {
+    if (!file.endsWith(".md") || !parse || !validate) return true;
+    let errors: string[];
+    try {
+      const res = validate(parse(content));
+      errors = res.valid ? [] : (res.errors ?? ["schema validation failed"]);
+    } catch (e) {
+      errors = [e instanceof Error ? e.message : String(e)];
+    }
+    if (errors.length === 0) {
+      const body = content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "");
+      if (body.trim().length === 0) {
+        errors = ["stage body is empty after the frontmatter fence (a behaviorally dead stage)"];
+      }
+    }
+    if (errors.length === 0) return true;
+    schemaDroppedStageSlugs.add(rel.replace(/\\/g, "/").split("/").pop()!.replace(/\.md$/, ""));
+    recordDrop(
+      `plugin "${PLUGIN_NAME}" stage file "${rel}" not composed: ${errors.join("; ")} — fix the plugin's stage file and re-run compose`,
+    );
+    return false;
+  };
+}
+
 // No-clobber copy of one tree into another, with {{HARNESS_DIR}} substitution on
 // .md prose. NEVER overwrites an existing dest (portable no-clobber — the point
 // of the former `cp -n`, done right). Returns true if anything was written.
@@ -596,7 +646,7 @@ try {
       "plugin-owned stages/scopes/agents not composed: installed engine predates the plugin: ownership key - re-copy your dist/<harness>/ shell, then re-run compose",
     );
   } else {
-    changed = copyTreeNoClobber(join(PLUGIN_ROOT, "stages"), STAGES_DIR, "stage") || changed;
+    changed = copyTreeNoClobber(join(PLUGIN_ROOT, "stages"), STAGES_DIR, "stage", await installedStageSchemaPrecheck()) || changed;
     const scopesDir = join(HARNESS_DIR, "scopes");
     const agentsDir = join(HARNESS_DIR, "agents");
     changed = copyTreeNoClobber(join(PLUGIN_ROOT, "scopes"), scopesDir, "scopes", installedNameCollisionPrecheck(scopesDir, "scopes")) || changed;
@@ -815,7 +865,9 @@ try {
     if (!existsSync(dir)) continue;
     for (const f of readdirSync(dir)) if (f.endsWith(".md")) pluginStages.push({ slug: f.slice(0, -3), phase });
   }
-  const pluginSlugs = pluginStages.map((s) => s.slug);
+  // A schema-dropped stage never landed on disk, so it can never reach the
+  // graph — expecting it there would force a futile recompile every session.
+  const pluginSlugs = pluginStages.map((s) => s.slug).filter((s) => !schemaDroppedStageSlugs.has(s));
   const graphPath = join(HARNESS_DIR, "tools", "data", "stage-graph.json");
   const readGraph = (): Array<{ slug?: string; plugin?: string; phase?: string; enabled?: boolean }> | null => {
     try {

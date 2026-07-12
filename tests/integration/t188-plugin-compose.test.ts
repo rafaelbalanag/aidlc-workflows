@@ -737,6 +737,45 @@ describe("t188 plugin compose — emit + compose the contribution seam", () => {
     expect(drops).toContain("renamed bundle: key");
   });
 
+  // A schema-invalid plugin STAGE FILE (e.g. a stale tree still authoring
+  // bundle:) must be skip-and-dropped at copy time, NOT copied into the
+  // install — graph compile is all-or-nothing, so one bad copy would brick
+  // every later compile of the whole install, not just that stage.
+  test("a bundle:-keyed plugin stage file is skipped at copy time and the install still compiles", () => {
+    const staleStage = [
+      "---", "slug: syn-stale-stage", "phase: construction", "execution: ALWAYS",
+      "condition: always", "lead_agent: aidlc-quality-agent", "support_agents: []",
+      "mode: inline", "produces: []", "consumes: []", "requires_stage: []",
+      "inputs: x", "outputs: y", "bundle: syn-stale", "---", "", "# Stale stage body", "",
+    ].join("\n");
+    const { drops, proj } = composeSynthetic("syn-stale", {
+      "stages/construction/syn-stale-stage.md": staleStage,
+    });
+    // The bad stage never landed, the drop names the file + the schema error,
+    // and the install's graph still compiles (self-heal probe unaffected).
+    expect(existsSync(join(proj, ".claude", "aidlc-common", "stages", "construction", "syn-stale-stage.md"))).toBe(false);
+    expect(drops).toContain('stage file "construction/syn-stale-stage.md" not composed');
+    expect(drops).toContain("bundle: was renamed");
+    const compile = spawnSync(BUN, [join(proj, ".claude", "tools", "aidlc-graph.ts"), "compile"], {
+      cwd: proj, encoding: "utf-8", timeout: TIMEOUT_MS - 5_000,
+    });
+    expect(compile.status).toBe(0);
+  });
+
+  test("a frontmatter-only (empty-body) plugin stage file is skipped at copy time", () => {
+    const deadStage = [
+      "---", "slug: syn-dead-stage", "phase: construction", "execution: ALWAYS",
+      "condition: always", "lead_agent: aidlc-quality-agent", "support_agents: []",
+      "mode: inline", "produces: []", "consumes: []", "requires_stage: []",
+      "inputs: x", "outputs: y", "plugin: syn-dead", "---", "",
+    ].join("\n");
+    const { drops, proj } = composeSynthetic("syn-dead", {
+      "stages/construction/syn-dead-stage.md": deadStage,
+    });
+    expect(existsSync(join(proj, ".claude", "aidlc-common", "stages", "construction", "syn-dead-stage.md"))).toBe(false);
+    expect(drops).toContain("stage body is empty");
+  });
+
   // --- Round-6: per-plugin drops isolation + nested fence + plugin colon ---
   test("a clean plugin's compose does NOT erase another plugin's drops (R6-B1)", () => {
     // Two plugins on the same project: A degrades (missing target), B is clean.
