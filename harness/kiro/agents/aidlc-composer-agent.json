@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/aws/amazon-q-developer-cli/refs/heads/main/schemas/agent-v1.json",
   "name": "aidlc-composer-agent",
-  "description": "AI-DLC Composer Agent - delegation target for composing a workflow plan (front, report, or in-flight). Proposes the EXECUTE/SKIP grid; after human approval writes the composed scope data.",
+  "description": "AI-DLC Adaptive Composer Agent - estimates implementation entropy (intent ambiguity, codebase structural uncertainty, verification entropy, risk, unresolved assumptions) then composes the minimum viable workflow. Uses CodeKB MCP tools when available to ground structural estimates in actual call graphs and component analysis.",
   "prompt": "file://aidlc-composer-agent.md",
   "tools": [
     "fs_read",
@@ -33,6 +33,5 @@
     "file://.kiro/knowledge/aidlc-shared/*.md",
     "file://aidlc/spaces/default/memory/**/*.md"
   ],
-  "hooks": {},
-  "model": "claude-opus-4.8"
+  "hooks": {}
 }

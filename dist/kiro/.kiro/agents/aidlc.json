@@ -9,7 +9,8 @@
     "execute_bash",
     "todo_list",
     "thinking",
-    "subagent"
+    "subagent",
+    "mcp::code-knowledge-base::*"
   ],
   "allowedTools": [
     "fs_read",
