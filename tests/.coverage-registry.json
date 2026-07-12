@@ -275,7 +275,7 @@
       "minMechanism": "none",
       "coveredBy": [
         {
-          "file": "tests/integration/t223-plugin-selection.test.ts",
+          "file": "tests/integration/t224-plugin-selection.test.ts",
           "mechanism": "cli"
         }
       ],
@@ -1137,7 +1137,7 @@
           "mechanism": "none"
         },
         {
-          "file": "tests/integration/t223-plugin-selection.test.ts",
+          "file": "tests/integration/t224-plugin-selection.test.ts",
           "mechanism": "cli"
         },
         {
@@ -1153,11 +1153,11 @@
           "mechanism": "cli"
         },
         {
-          "file": "tests/unit/t221-plugin-runner-naming.test.ts",
+          "file": "tests/unit/t222-plugin-runner-naming.test.ts",
           "mechanism": "cli"
         },
         {
-          "file": "tests/unit/t222-naming-enforcement.test.ts",
+          "file": "tests/unit/t223-naming-enforcement.test.ts",
           "mechanism": "cli"
         }
       ],
@@ -1773,7 +1773,7 @@
           "mechanism": "none"
         },
         {
-          "file": "tests/unit/t222-naming-enforcement.test.ts",
+          "file": "tests/unit/t223-naming-enforcement.test.ts",
           "mechanism": "cli"
         },
         {
@@ -1848,11 +1848,11 @@
           "mechanism": "cli"
         },
         {
-          "file": "tests/unit/t222-naming-enforcement.test.ts",
+          "file": "tests/unit/t223-naming-enforcement.test.ts",
           "mechanism": "cli"
         },
         {
-          "file": "tests/unit/t224-scope-name-decoupling.test.ts",
+          "file": "tests/unit/t225-scope-name-decoupling.test.ts",
           "mechanism": "cli"
         }
       ],
@@ -1930,7 +1930,7 @@
       "minMechanism": "none",
       "coveredBy": [
         {
-          "file": "tests/integration/t223-plugin-selection.test.ts",
+          "file": "tests/integration/t224-plugin-selection.test.ts",
           "mechanism": "cli"
         }
       ],
@@ -2182,7 +2182,7 @@
       "minMechanism": "none",
       "coveredBy": [
         {
-          "file": "tests/integration/t223-plugin-selection.test.ts",
+          "file": "tests/integration/t224-plugin-selection.test.ts",
           "mechanism": "cli"
         }
       ],
@@ -2592,7 +2592,7 @@
       "minMechanism": "none",
       "coveredBy": [
         {
-          "file": "tests/unit/t224-scope-name-decoupling.test.ts",
+          "file": "tests/unit/t225-scope-name-decoupling.test.ts",
           "mechanism": "cli"
         }
       ],
@@ -2714,7 +2714,7 @@
       "minMechanism": "none",
       "coveredBy": [
         {
-          "file": "tests/unit/t224-scope-name-decoupling.test.ts",
+          "file": "tests/unit/t225-scope-name-decoupling.test.ts",
           "mechanism": "cli"
         }
       ],
@@ -4843,7 +4843,7 @@
           "mechanism": "cli"
         },
         {
-          "file": "tests/unit/t222-naming-enforcement.test.ts",
+          "file": "tests/unit/t223-naming-enforcement.test.ts",
           "mechanism": "cli"
         },
         {
@@ -5083,7 +5083,7 @@
       "minMechanism": "cli",
       "coveredBy": [
         {
-          "file": "tests/integration/t223-plugin-selection.test.ts",
+          "file": "tests/integration/t224-plugin-selection.test.ts",
           "mechanism": "cli"
         }
       ],

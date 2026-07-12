@@ -117,13 +117,13 @@ function writeSortedGrid(project: string, scopeGrid: Record<string, { stages: Re
   writeFileSync(gridPath(project), `${JSON.stringify(sorted, null, 2)}\n`, "utf-8");
 }
 
-describe("t223 plugin selection — install chooses visible plugin surfaces", () => {
+describe("t224 plugin selection — install chooses visible plugin surfaces", () => {
   let tmp: string;
   let pluginBuilt: string;
   let project: string;
 
   beforeAll(() => {
-    tmp = mkdtempSync(join(tmpdir(), "aidlc-t223-"));
+    tmp = mkdtempSync(join(tmpdir(), "aidlc-t224-"));
     pluginBuilt = join(tmp, "plugin", "claude");
     const build = spawnSync(BUN, [PACKAGE_TS, "plugin", "build", PLUGIN, "claude", pluginBuilt], {
       cwd: REPO_ROOT,

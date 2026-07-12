@@ -71,7 +71,7 @@ function stageFrontmatter(slug: string): string {
 }
 
 function compileStageFixture(filenameStem: string, slug: string): void {
-  const root = tempDir("aidlc-t222-compile-");
+  const root = tempDir("aidlc-t223-compile-");
   const stagesDir = join(root, "stages");
   const construction = join(stagesDir, "construction");
   const rulesDir = join(root, "rules");
@@ -134,7 +134,7 @@ function writeAgent(dir: string, file: string, name: string): void {
   );
 }
 
-describe("t222 naming enforcement", () => {
+describe("t223 naming enforcement", () => {
   test("stage filename stem must match frontmatter slug at compile", () => {
     expect(() => compileStageFixture("file-stem", "declared-slug")).toThrow(
       /file-stem\.md.*file-stem.*declared-slug.*Rename the file or fix the slug/,
@@ -142,7 +142,7 @@ describe("t222 naming enforcement", () => {
   });
 
   test("duplicate scope names throw and name both files", () => {
-    const dir = tempDir("aidlc-t222-scopes-");
+    const dir = tempDir("aidlc-t223-scopes-");
     const first = join(dir, "alpha.md");
     const second = join(dir, "beta.md");
     writeScope(dir, "alpha.md", "shared-scope");
@@ -158,7 +158,7 @@ describe("t222 naming enforcement", () => {
   });
 
   test("duplicate agent slugs throw and name both files", () => {
-    const dir = tempDir("aidlc-t222-agents-");
+    const dir = tempDir("aidlc-t223-agents-");
     const first = join(dir, "alpha-agent.md");
     const second = join(dir, "beta-agent.md");
     writeAgent(dir, "alpha-agent.md", "shared-agent");
@@ -174,7 +174,7 @@ describe("t222 naming enforcement", () => {
   });
 
   test("AIDLC_AGENTS_DIR points loadAgents at a temp fixture dir", () => {
-    const dir = tempDir("aidlc-t222-agent-seam-");
+    const dir = tempDir("aidlc-t223-agent-seam-");
     writeAgent(dir, "fixture-agent.md", "fixture-agent");
 
     withEnvAndFreshCaches({ AIDLC_AGENTS_DIR: dir }, () => {
@@ -188,7 +188,7 @@ describe("t222 naming enforcement", () => {
   test("doctor reports a scope filename/name stem mismatch as advisory", () => {
     const project = createTestProject();
     projects.push(project);
-    const scopes = tempDir("aidlc-t222-doctor-scopes-");
+    const scopes = tempDir("aidlc-t223-doctor-scopes-");
     writeScope(scopes, "wrong-scope.md", "right-scope");
 
     const res = spawnSync(BUN, [UTIL, "doctor", "--project-dir", project], {

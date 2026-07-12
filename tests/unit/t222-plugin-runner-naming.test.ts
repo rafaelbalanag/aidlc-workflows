@@ -62,7 +62,7 @@ function stageFrontmatter(slug: string, extra = ""): string {
 }
 
 function compileFixture(stages: Record<string, string>) {
-  const root = tempDir("aidlc-t221-compile-");
+  const root = tempDir("aidlc-t222-compile-");
   const stagesDir = join(root, "stages");
   const construction = join(stagesDir, "construction");
   mkdirSync(construction, { recursive: true });
@@ -185,7 +185,7 @@ function legacyStageRunnerBody(slug: string): string {
   ].join("\n");
 }
 
-describe("t221 plugin ownership and runner naming", () => {
+describe("t222 plugin ownership and runner naming", () => {
   test("compile carries plugin only for plugin-owned stages", () => {
     const compiled = compileFixture({
       "code-generation": stageFrontmatter("code-generation"),
@@ -260,7 +260,7 @@ describe("t221 plugin ownership and runner naming", () => {
   });
 
   test("scope runner default batch is selected by runner: true; --all includes unflagged scopes", () => {
-    const scopesDir = tempDir("aidlc-t221-scopes-");
+    const scopesDir = tempDir("aidlc-t222-scopes-");
     for (const file of readdirSync(CORE_SCOPES).filter((f) => f.endsWith(".md"))) {
       cpSync(join(CORE_SCOPES, file), join(scopesDir, file));
     }
@@ -280,7 +280,7 @@ describe("t221 plugin ownership and runner naming", () => {
       "utf-8",
     );
 
-    const defaultOut = tempDir("aidlc-t221-scope-out-");
+    const defaultOut = tempDir("aidlc-t222-scope-out-");
     const defaultRun = runRunnerGen(
       CORE_RUNNER_GEN,
       ["scopes", "--out", defaultOut],
@@ -297,7 +297,7 @@ describe("t221 plugin ownership and runner naming", () => {
     ]);
     expect(existsSync(join(defaultOut, "aidlc-fixture-scope", "SKILL.md"))).toBe(false);
 
-    const allOut = tempDir("aidlc-t221-scope-all-");
+    const allOut = tempDir("aidlc-t222-scope-all-");
     const allRun = runRunnerGen(
       CORE_RUNNER_GEN,
       ["scopes", "--all", "--out", allOut],
@@ -341,7 +341,7 @@ describe("t221 plugin ownership and runner naming", () => {
     expect(existsSync(playbook)).toBe(true);
     expect(writeRun.stderr).toContain("unmanaged skill, not pruned: team-playbook");
 
-    const scopesDir = tempDir("aidlc-t221-no-runner-scopes-");
+    const scopesDir = tempDir("aidlc-t222-no-runner-scopes-");
     writeScope(scopesDir, "doc-only", false);
     setPluginSelection(project, []);
     const scopesRun = runRunnerGen(gen, ["scopes"], { AIDLC_SCOPES_DIR: scopesDir });
@@ -370,7 +370,7 @@ describe("t221 plugin ownership and runner naming", () => {
     const project = setupIntegrationProject({ noAidlcDocs: true });
     tempDirs.push(project);
     const gen = projectRunnerGen(project);
-    const scopesDir = tempDir("aidlc-t221-empty-scopes-");
+    const scopesDir = tempDir("aidlc-t222-empty-scopes-");
     writeScope(scopesDir, "doc-only", false);
     const existing = join(project, ".claude", "skills", "aidlc-bugfix", "SKILL.md");
 
@@ -386,7 +386,7 @@ describe("t221 plugin ownership and runner naming", () => {
     const project = setupIntegrationProject({ noAidlcDocs: true });
     tempDirs.push(project);
     const gen = projectRunnerGen(project);
-    const scopesDir = tempDir("aidlc-t221-selected-empty-scopes-");
+    const scopesDir = tempDir("aidlc-t222-selected-empty-scopes-");
     writeScope(scopesDir, "doc-only", false);
     setPluginSelection(project, []);
     const existing = join(project, ".claude", "skills", "aidlc-bugfix", "SKILL.md");

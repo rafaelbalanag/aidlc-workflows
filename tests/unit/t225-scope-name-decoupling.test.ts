@@ -176,7 +176,7 @@ function literalScopeNames(body: string): string[] {
 }
 
 function makePluginOnlyInstall(): string {
-  const project = tempDir("aidlc-t224-plugin-only-");
+  const project = tempDir("aidlc-t225-plugin-only-");
   const harness = join(project, ".claude");
   cpSync(DIST_CLAUDE, harness, { recursive: true });
   cpSync(TEST_PRO_SCOPE, join(harness, "scopes", "test-pro-validation.md"));
@@ -202,7 +202,7 @@ function makePluginOnlyInstall(): string {
   return project;
 }
 
-describe("t224 static scope-name coupling probe", () => {
+describe("t225 static scope-name coupling probe", () => {
   test("core tools do not carry 3+ core scope names in one Set/array literal", () => {
     const failures: string[] = [];
     for (const file of readdirSync(CORE_TOOLS).filter((name) => name.endsWith(".ts")).sort()) {
@@ -217,9 +217,9 @@ describe("t224 static scope-name coupling probe", () => {
   });
 });
 
-describe("t224 skeleton scope metadata", () => {
+describe("t225 skeleton scope metadata", () => {
   test("fixture scopes parse skeleton on/off, absent defaults off, and invalid names the file", () => {
-    const dir = tempDir("aidlc-t224-scopes-");
+    const dir = tempDir("aidlc-t225-scopes-");
     writeScope(dir, "skeleton-on", "on");
     writeScope(dir, "skeleton-off", "off");
     writeScope(dir, "skeleton-absent");
@@ -231,7 +231,7 @@ describe("t224 skeleton scope metadata", () => {
       expect(metadata["skeleton-absent"].skeleton).toBe(false);
     });
 
-    const invalidDir = tempDir("aidlc-t224-invalid-scopes-");
+    const invalidDir = tempDir("aidlc-t225-invalid-scopes-");
     writeScope(invalidDir, "bad-skeleton", "maybe");
     expect(() =>
       withEnvAndFreshCaches({ AIDLC_SCOPES_DIR: invalidDir }, () => loadScopeMetadata()),
@@ -250,7 +250,7 @@ describe("t224 skeleton scope metadata", () => {
   });
 });
 
-describe("t224 env-scope fallback under plugin-only selection", () => {
+describe("t225 env-scope fallback under plugin-only selection", () => {
   test("stageEnabledBySelection keeps initialization enabled under plugin-only selection", () => {
     const project = makePluginOnlyInstall();
     const script = [
@@ -271,7 +271,7 @@ describe("t224 env-scope fallback under plugin-only selection", () => {
   });
 
   test("selectionAwareDefaultScope notes sole-plugin substitution only when it substitutes", () => {
-    const dir = tempDir("aidlc-t224-scope-mapping-");
+    const dir = tempDir("aidlc-t225-scope-mapping-");
     const mappingPath = join(dir, "scope-mapping.json");
     writeFileSync(
       mappingPath,

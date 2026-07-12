@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [2.3.5] - 2026-07-10
+## [2.3.5] - 2026-07-12
 
 Completes the plugin mechanism with **install-time plugin selection** and the full plugin content surface, proven at scale in a customer pilot. Plugins add, the install selects: a plugin can now ship scopes, agent personas, and knowledge alongside stages, every stage-enumerating surface is generated from the compiled graph, and a new `select-plugins` command lets an install choose which plugins' content its users see (core is the implicit `aidlc` plugin and can itself be deselected; a plugin-only install shows only that plugin's commands and scopes). The ownership frontmatter field is renamed from `bundle:` to `plugin:` (the old key is rejected with an error naming the fix). **Upgrade:** re-copy your `dist/<harness>/` shell and re-run any installed plugin's compose hook; a plugin tree still authoring `bundle:` must rename the key to `plugin:`. Existing installs without a selection are otherwise unaffected (an absent `plugins` key enables everything, and the shipped trees are byte-identical on core surfaces).
 
