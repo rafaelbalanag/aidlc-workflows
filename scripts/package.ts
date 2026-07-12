@@ -852,7 +852,17 @@ function pluginTargetFor(harnessName: string): PluginTarget | null {
 // the --check path (into a temp dir, then byte-compare) call it identically.
 function buildPluginProjection(pluginName: string, harnessName: string, outDir: string): void {
   const pluginSrc = join(PLUGINS_ROOT, pluginName);
-  const manifest = JSON.parse(readFileSync(join(pluginSrc, ".aidlc-plugin", "plugin.json"), "utf-8"));
+  const manifestPath = join(pluginSrc, ".aidlc-plugin", "plugin.json");
+  let manifest: Record<string, unknown>;
+  try {
+    manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
+  } catch (e) {
+    // Name the plugin and the file, not a raw JSON.parse stack that reads as
+    // a packager crash - one plugin's bad manifest should be identifiable.
+    throw new Error(
+      `plugins/${pluginName}: cannot parse ${relative(REPO_ROOT, manifestPath)}: ${e instanceof Error ? e.message : String(e)}. Fix the manifest JSON.`
+    );
+  }
   const version = manifest.version || "0.0.1";
   const author = manifest.author || { name: "AIDLC" };
   const description = manifest.description || "";

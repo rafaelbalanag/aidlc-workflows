@@ -1490,6 +1490,27 @@ function validateSelectionClosure(stages: GraphStage[]): void {
   }
 }
 
+/** Enabled stages whose requires_stage points at a selection-disabled stage.
+ *  NOT part of the closure ERROR: an ordering edge to a never-running stage is
+ *  vacuous (topoSort ignores edges outside the enabled subset), and the shipped
+ *  plugin-only flow legitimately runs plugin stages whose requires_stage names
+ *  core stages. But the silently-dropped edge is worth surfacing - doctor
+ *  reports these as an advisory so a surprising walk order is explainable. */
+export function selectionDroppedOrderingEdges(
+  stages: Array<{ slug: string; plugin?: string; enabled?: boolean; requires_stage?: string[] }>,
+): string[] {
+  const bySlug = new Map(stages.map((s) => [s.slug, s]));
+  const dropped: string[] = [];
+  for (const stage of stages.filter((s) => s.enabled !== false)) {
+    for (const dep of stage.requires_stage ?? []) {
+      const depStage = bySlug.get(dep);
+      if (!depStage || depStage.enabled !== false) continue;
+      dropped.push(`${stage.slug} requires ${dep} (${stagePluginOwner(depStage)}, disabled)`);
+    }
+  }
+  return dropped.sort();
+}
+
 /** Regenerate stage-graph.json from the 31 YAML stage files.
  *  Bootstraps number + name from the existing JSON (the "computed
  *  not authored" contract — see stage-definition.md). Asserts the

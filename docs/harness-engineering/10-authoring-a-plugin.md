@@ -59,7 +59,7 @@ block:
 
 ```jsonc
 {
-  "name": "test-pro",                 // == dir name; "core" is reserved
+  "name": "test-pro",                 // == dir name; "core", "aidlc", and "aidlc-*" are reserved
   "version": "0.1.0",                 // semver; checked by dependents
   "description": "Full-featured testing plugin — unit/branch coverage, functional, integration, regression, edge, and API positive+negative.",
   "author": { "name": "AWS AIDLC" },

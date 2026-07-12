@@ -19,6 +19,7 @@ import {
   loadGraph,
   loadRules,
   memoryDirFor,
+  selectionDroppedOrderingEdges,
   stageGraphDrift,
   type GraphStage,
   validateGrid,
@@ -1258,6 +1259,18 @@ function handleDoctor(projectDir: string): void {
           ? `${stranded.join("; ")} - re-enable the plugin(s) with \`bun ${harnessDir()}/tools/aidlc-utility.ts select-plugins\`, or complete/park the workflow(s)`
           : undefined,
       });
+
+      // Ordering edges the selection silently drops (an enabled stage's
+      // requires_stage names a disabled stage). Legitimate in plugin-only
+      // installs (plugin stages ordering after core ones), so ADVISORY - but
+      // surfaced, or a surprising walk order has no explanation anywhere.
+      const droppedEdges = selectionDroppedOrderingEdges(graphAll);
+      if (droppedEdges.length > 0) {
+        results.push({
+          pass: true,
+          label: `Selection-dropped ordering edges (advisory): ${droppedEdges.length} requires_stage edge(s) point at disabled stages - ${droppedEdges.join("; ")}`,
+        });
+      }
     }
   } catch (e) {
     results.push({

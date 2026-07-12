@@ -772,9 +772,18 @@ try {
 
       // structural: adds.produces / adds.sensors / adds.consumes
       const addsBlock = fm.match(/^adds:\n([\s\S]*?)(?=^\S|$(?![\s\S]))/m)?.[1] ?? "";
+      // Drop-log a parse shortfall, mirroring the consumes parser: the block
+      // regex stops at the first non-4-space entry, so a mis-indented line
+      // silently truncated the list (entries after it vanished with no log).
       const listOf = (f: string): string[] => {
         const s = addsBlock.match(new RegExp(`^  ${f}:\\n((?:    - [\\w-]+\\n?)*)`, "m"));
-        return s ? [...s[1].matchAll(/^    - ([\w-]+)/gm)].map((x) => x[1]) : [];
+        const parsed = s ? [...s[1].matchAll(/^    - ([\w-]+)/gm)].map((x) => x[1]) : [];
+        const declaredBlock = addsBlock.match(new RegExp(`^  ${f}:\\n((?:\\s+- .*\\n?)*)`, "m"))?.[1] ?? "";
+        const declared = (declaredBlock.match(/^\s+- /gm) ?? []).length;
+        if (declared > parsed.length) {
+          recordDrop(`contribution to ${target}: parsed ${parsed.length} of ${declared} adds.${f} entries (check indentation - entries must be 4-space "    - kebab-name"); some dropped`);
+        }
+        return parsed;
       };
       const consumes = (() => {
         // Parse consumes per-entry, NOT by zipping two independent artifact/required

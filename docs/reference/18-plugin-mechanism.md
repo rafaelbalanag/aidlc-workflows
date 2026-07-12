@@ -71,7 +71,7 @@ frontmatter `name`. Plugin agent files follow the same rule:
 
 ```jsonc
 {
-  "name": "test-pro",                 // == dir name; "core" is reserved; kebab-case
+  "name": "test-pro",                 // == dir name; "core", "aidlc", and "aidlc-*" are reserved; kebab-case
   "version": "0.1.0",                 // semver; checked against dependents' constraints
   "description": "…",
   "author": { "name": "AWS AIDLC" },
@@ -152,7 +152,12 @@ nodes carry `"enabled": false`; enabled nodes omit the key. Runtime loaders
 filter disabled nodes, so runners, state rows, scope tables, and orchestration
 see only the selected graph. `loadStageGraphAll()` is reserved for doctor and
 selection tooling. Stage numbers are assigned from the full graph, so disabling
-and later re-enabling a plugin preserves the exact numbers.
+and later re-enabling a plugin preserves the exact numbers. The selection
+filter covers stages, scopes, and runners; a disabled plugin's `agents/` and
+`knowledge/` files stay on disk AND stay loadable (the agent roster and
+knowledge lookups are not selection-filtered) - inert unless something
+references them, since the stages that would dispatch those agents are
+filtered out.
 
 The compiled scope grid contains only enabled scope identities. Scope files for
 disabled plugins remain on disk, but they are not valid runtime scopes until the
@@ -162,18 +167,39 @@ alphabetically. If multiple plugin scope owners are enabled and core's
 `feature` fallback is unavailable, the orchestrator errors and asks for an
 explicit `--scope`.
 
+Disabling a plugin also removes what it merged into core stages, not just its
+own files. Compose records the structural adds it actually applied (produces /
+sensors / consumes / required_sections, per target stage) in a per-plugin
+sidecar at `tools/data/plugin-contrib-<key>.json`; spliced prose fragments carry
+their own sentinel markers. On disable, `select-plugins` strips both from the
+installed stage source inside the same rollback transaction, so a disabled
+plugin's contributions stop steering enabled stages. Re-enabling restores them
+on the next session start: the plugin's compose hook re-merges, byte-identical.
+
 Selection is closure-checked at compile time: an enabled stage may not require
 an artifact whose only producer stages are disabled. The error names the
 consuming stage, the artifact, the disabled producer stage(s), and the plugin(s)
 that provide them, then tells you to enable those plugins or disable the
 consumer. This catches plugin-only selections that would otherwise route a stage
-with a starved required input.
+with a starved required input. A `requires_stage` edge pointing at a disabled
+stage is NOT an error (the ordering edge is vacuous when the dependency never
+runs - a plugin-only install legitimately orders plugin stages after core
+ones), but doctor lists such dropped edges as an advisory.
+
+`select-plugins` also refuses a change that would strand an active workflow:
+disabling the plugin that owns a running workflow's scope, or one that owns a
+pending EXECUTE stage in its plan, is rejected naming each dependency (complete
+or park the workflow first, or keep the plugin enabled). Doctor hard-fails on a
+selection that already strands one.
 
 Composing a plugin does not auto-enable it when a selection already exists. The
-compose hook still copies the files and merges contributions, then records an
-advisory drop naming the `select-plugins` command to expose that plugin. With no
-selection key, composed plugins are active immediately, preserving the original
-status quo.
+compose hook still copies the plugin's own files (stages, scopes, agents,
+knowledge, sensors, tools - all runtime-filtered) and records an advisory drop
+naming the `select-plugins` command to expose that plugin, but it does NOT
+merge contributions into core stage source while disabled - merged
+contributions bypass the selection filter, and merging them would undo the
+disable-time strip on every session start. With no selection key, composed
+plugins are active immediately, preserving the original status quo.
 
 `bundle` is deliberately unused today. The word is reserved for a possible
 future collection-of-plugins concept; plugin ownership is always expressed with
