@@ -739,7 +739,7 @@ describe("t188 plugin compose — emit + compose the contribution seam", () => {
 
   // A schema-invalid plugin STAGE FILE (e.g. a stale tree still authoring
   // bundle:) must be skip-and-dropped at copy time, NOT copied into the
-  // install — graph compile is all-or-nothing, so one bad copy would brick
+  // install - graph compile is all-or-nothing, so one bad copy would brick
   // every later compile of the whole install, not just that stage.
   test("a bundle:-keyed plugin stage file is skipped at copy time and the install still compiles", () => {
     const staleStage = [

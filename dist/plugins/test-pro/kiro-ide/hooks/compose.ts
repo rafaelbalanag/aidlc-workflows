@@ -351,15 +351,15 @@ function installedNameCollisionPrecheck(dst: string, kind: "agents" | "scopes"):
 }
 
 // Validate a plugin stage file against the INSTALLED engine's schema before
-// copying it into the install. Compile is all-or-nothing — aidlc-graph.ts
-// throws on the first schema-invalid stage file — so one bad copy (e.g. a
+// copying it into the install. Compile is all-or-nothing - aidlc-graph.ts
+// throws on the first schema-invalid stage file - so one bad copy (e.g. a
 // stale plugin tree still authoring the renamed bundle: key) would brick the
 // install's EVERY later graph compile until the file is hand-deleted.
 // Skip-and-drop instead, naming the file and the validator's errors, so the
 // bad stage never lands and the rest of the plugin composes normally. A
 // frontmatter-only stage (empty body) is dropped the same way: it compiles
 // and routes while being behaviorally dead. Fails OPEN (copies) when the
-// installed lib can't be loaded — a partial install already can't compile,
+// installed lib can't be loaded - a partial install already can't compile,
 // so we don't add a second failure mode.
 // Slugs the schema precheck refused, so the "did my stages reach the compiled
 // graph?" self-heal probe below doesn't see a deliberately-dropped stage as a
@@ -391,7 +391,7 @@ async function installedStageSchemaPrecheck(): Promise<CopyPrecheck> {
         errors = ["stage body is empty after the frontmatter fence (a behaviorally dead stage)"];
       }
     }
-    // Mirror compile's ownership invariants (aidlc-graph.ts) — they are
+    // Mirror compile's ownership invariants (aidlc-graph.ts) - they are
     // compile-time THROWS, so a landed file violating them bricks the whole
     // graph compile exactly like a schema-invalid one.
     if (errors.length === 0) {
@@ -409,7 +409,7 @@ async function installedStageSchemaPrecheck(): Promise<CopyPrecheck> {
     if (errors.length === 0) return true;
     schemaDroppedStageSlugs.add(rel.replace(/\\/g, "/").split("/").pop()!.replace(/\.md$/, ""));
     recordDrop(
-      `plugin "${PLUGIN_NAME}" stage file "${rel}" not composed: ${errors.join("; ")} — fix the plugin's stage file and re-run compose`,
+      `plugin "${PLUGIN_NAME}" stage file "${rel}" not composed: ${errors.join("; ")} - fix the plugin's stage file and re-run compose`,
     );
     return false;
   };
@@ -469,7 +469,7 @@ function frontmatter(content: string): string {
 // Append items to a top-level list field, or replace the inline-empty `field: []`
 // form with a block (fixes the silent-drop asymmetry, review #5). Idempotent.
 // Returns the (possibly unchanged) content; logs when a field is absent entirely.
-// `added` (when given) collects the values THIS call actually wrote — the
+// `added` (when given) collects the values THIS call actually wrote - the
 // contribution sidecar records actually-added entries, never declared ones, so
 // a later removal can't strip a value core (or another plugin) already had.
 function mergeListField(content: string, field: string, items: string[], target: string, added?: string[]): string {
@@ -703,7 +703,7 @@ try {
   // Per-plugin sidecar of what compose ACTUALLY merged into core stage source
   // (structural adds carry no in-file provenance, unlike the sentinel-marked
   // prose fragments), keyed by target stage. select-plugins reads it to strip
-  // a disabled plugin's merged entries — without it, disable left the plugin's
+  // a disabled plugin's merged entries - without it, disable left the plugin's
   // produces/sensors/consumes welded into enabled core stages. Accumulated
   // across re-runs: entries this run added are unioned into any prior record
   // (an idempotent re-compose adds nothing and must not erase the record).
@@ -731,7 +731,7 @@ try {
   // Contributions merge ONLY for an enabled plugin. Stage/scope/agent copies
   // are safe under a disabling selection (runtime loaders filter them), but
   // merged contributions land in CORE stage source where no selection filter
-  // reaches — so composing them while disabled would weld a disabled plugin's
+  // reaches - so composing them while disabled would weld a disabled plugin's
   // produces/sensors/prose into enabled stages (and undo select-plugins'
   // disable-time strip on the very next session start). The advisory drop at
   // the top of this run already names the select-plugins command to enable.
@@ -951,7 +951,7 @@ try {
       mkdirSync(join(HARNESS_DIR, "tools", "data"), { recursive: true });
       writeFileSync(contribManifestPath, `${JSON.stringify(contribManifest, null, 2)}\n`);
     } catch (e) {
-      recordDrop(`could not write the contribution sidecar ${relative(PROJECT_DIR, contribManifestPath)}: ${e instanceof Error ? e.message : String(e)} — disabling this plugin will not strip its merged contributions`, "advisory");
+      recordDrop(`could not write the contribution sidecar ${relative(PROJECT_DIR, contribManifestPath)}: ${e instanceof Error ? e.message : String(e)} - disabling this plugin will not strip its merged contributions`, "advisory");
     }
   }
 
@@ -968,7 +968,7 @@ try {
     for (const f of readdirSync(dir)) if (f.endsWith(".md")) pluginStages.push({ slug: f.slice(0, -3), phase });
   }
   // A schema-dropped stage never landed on disk, so it can never reach the
-  // graph — expecting it there would force a futile recompile every session.
+  // graph - expecting it there would force a futile recompile every session.
   const pluginSlugs = pluginStages.map((s) => s.slug).filter((s) => !schemaDroppedStageSlugs.has(s));
   const graphPath = join(HARNESS_DIR, "tools", "data", "stage-graph.json");
   const readGraph = (): Array<{ slug?: string; plugin?: string; phase?: string; enabled?: boolean }> | null => {

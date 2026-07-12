@@ -620,7 +620,7 @@ function activeWorkflowDependencyViolations(
         }
       }
       // Pending/active plugin-owned stages in the plan (EXECUTE rows that are
-      // not yet completed/skipped) — the walk would error on or silently drop
+      // not yet completed/skipped) - the walk would error on or silently drop
       // them. Completed rows are history; they don't depend on the plugin.
       for (const cb of parseCheckboxes(content)) {
         if (cb.state === "completed" || cb.state === "skipped") continue;

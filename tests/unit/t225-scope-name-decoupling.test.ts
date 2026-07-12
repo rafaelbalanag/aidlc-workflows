@@ -157,7 +157,7 @@ function stripComments(source: string): string {
 }
 
 // Innermost bracket-pair bodies (quoted strings may contain brackets without
-// splitting a pair). A single linear scan with a bracket stack — the previous
+// splitting a pair). A single linear scan with a bracket stack - the previous
 // backreference-free regex form backtracked quadratically and blew past the
 // 5s test timeout once aidlc-lib.ts grew large enough.
 function arrayLiteralBodies(code: string): string[] {

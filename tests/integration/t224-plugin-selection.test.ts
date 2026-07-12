@@ -117,7 +117,7 @@ function writeSortedGrid(project: string, scopeGrid: Record<string, { stages: Re
   writeFileSync(gridPath(project), `${JSON.stringify(sorted, null, 2)}\n`, "utf-8");
 }
 
-describe("t224 plugin selection — install chooses visible plugin surfaces", () => {
+describe("t224 plugin selection - install chooses visible plugin surfaces", () => {
   let tmp: string;
   let pluginBuilt: string;
   let project: string;
