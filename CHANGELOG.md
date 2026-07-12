@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.7] - 2026-07-12
+
+The state file's `## Phase Progress` section now advances with the workflow. Previously it was seeded once at intent birth and never touched again, so a few stages in it still showed `Ideation: Pending` above a fully-checked Ideation checkbox block - a visible contradiction for anyone reading `aidlc-state.md` directly (routing was never affected; the engine reads `Lifecycle Phase` and the checkboxes, and `/aidlc --status` recomputes its own phase block). The section now tracks every transition the tools already audit. **Upgrade:** re-copy your `dist/<harness>/` shell into the project; a run already mid-flow keeps its stale rows for boundaries it already passed, and corrects from its next boundary onward.
+
+* Intent birth seeds the section truthfully: `Initialization: Verified` (birth completes every init stage before handing off) and the first post-init phase `Active`; later phases stay `Pending`/`Skipped` by scope as before.
+* `advance` and `finalize` at a phase boundary flip the completed phase to `Verified` and the entered phase to `Active`; non-boundary transitions leave the section byte-identical. `complete-workflow` (and a final-stage `finalize`) flips the last phase to `Verified`.
+* Stage/phase jumps update the rows too: a forward jump marks the source phase `Verified`, wholly jumped-over phases `Skipped`, and the target phase `Active`; a backward jump returns reset phases to `Pending`.
+* `scope-change` and `recompose` re-derive only the not-yet-reached rows (`Pending`/`Skipped`) against the new plan; `Verified`/`Active` rows record history and are never rewritten.
+* A state file without the section (older installs) still transitions cleanly - the row update is a silent no-op, never an error.
+
 ## [2.3.4] - 2026-07-10
 
 The per-unit reviewer read-scope bound is now enforced deterministically, not just by prose. A new PreToolUse hook (`aidlc-reviewer-scope.ts`, the framework's 12th hook and second flow-altering one) refuses a dispatched reviewer's tool calls that reach into sibling units' `construction/` paths - file reads, writes, and grep/glob/shell patterns that span siblings - while a review is in flight, redirecting the reviewer to the contract paths it was passed. The conductor grants the enforcement window by writing `<record>/.aidlc-reviewer-dispatch.json` before invoking a per-unit reviewer (stage-protocol §12a step 1) and deleting it when the verdict is read (step 3); the record's `exempt` list is where the named-integration-point spot-check carve-out is granted. Hard-block on Claude Code, Kiro CLI, and Codex CLI. Kiro IDE ships no registration: its hook payloads carry no tool inputs (`toolArgs` is always empty), so a pre-tool matcher has nothing to inspect there and the prose bound governs. **Upgrade:** re-copy your `dist/<harness>/` shell into the project; Codex users also re-run the hook-trust pre-seed (`bun scripts/package.ts codex trust --project <abs-dir>`) - the new PreToolUse registration needs one new trust entry.
