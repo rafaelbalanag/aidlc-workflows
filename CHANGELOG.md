@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.8] - 2026-07-12
+
+The `upstream-coverage` sensor now matches the citation forms the framework's artifacts actually use, clearing the hundreds of false `SENSOR_FAILED` audit rows a Construction run accumulated. It previously demanded each consumed artifact's bare slug in every single written file; artifacts instead cite upstream by producing-stage directory path in their provenance header, and multi-artifact stages legitimately split citations across sibling deliverables. Real coverage gaps still fail. **Upgrade:** re-copy your `dist/<harness>/` shell into the project.
+
+* A citation of the producing stage's directory (e.g. `nfr-requirements/` in a basis/trace header) now covers every artifact that stage produces; the producer slug must appear as a whole path segment, so a longer sibling slug never satisfies it.
+* Coverage is evaluated over the union of the stage's declared deliverables in the output directory, not the single fired file, so a citation in a sibling artifact counts. Scaffolding (`memory.md`, `*-questions.md`, `*-timestamp.md`) is excluded from both sides: a fire on it is judged against the deliverables, and a slug appearing only there never counts.
+* A scaffolding write that fires before any deliverable exists now passes vacuously with `reason: "no deliverables on disk yet"` instead of failing every consume against an empty body.
+* False-positive fix: a consume slug no longer matches inside a longer kebab token (`requirements` inside `nfr-requirements` previously counted as a reference).
+* Sensor JSON output gains `scanned_files`; the dispatcher threads `--consumes` as `artifact:producer` pairs plus a new `--deliverables` flag. Direct invocations with the old bare-slug `--consumes` and no `--deliverables` keep the previous per-file behavior.
+
 ## [2.3.4] - 2026-07-10
 
 The per-unit reviewer read-scope bound is now enforced deterministically, not just by prose. A new PreToolUse hook (`aidlc-reviewer-scope.ts`, the framework's 12th hook and second flow-altering one) refuses a dispatched reviewer's tool calls that reach into sibling units' `construction/` paths - file reads, writes, and grep/glob/shell patterns that span siblings - while a review is in flight, redirecting the reviewer to the contract paths it was passed. The conductor grants the enforcement window by writing `<record>/.aidlc-reviewer-dispatch.json` before invoking a per-unit reviewer (stage-protocol §12a step 1) and deleting it when the verdict is read (step 3); the record's `exempt` list is where the named-integration-point spot-check carve-out is granted. Hard-block on Claude Code, Kiro CLI, and Codex CLI. Kiro IDE ships no registration: its hook payloads carry no tool inputs (`toolArgs` is always empty), so a pre-tool matcher has nothing to inspect there and the prose bound governs. **Upgrade:** re-copy your `dist/<harness>/` shell into the project; Codex users also re-run the hook-trust pre-seed (`bun scripts/package.ts codex trust --project <abs-dir>`) - the new PreToolUse registration needs one new trust entry.
