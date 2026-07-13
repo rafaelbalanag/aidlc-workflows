@@ -40,22 +40,39 @@ leaving that budget for real phase work and delaying context-limit exhaustion.
 - **A new `Context Budget` key principle** codifies this so every stage inherits
   the behavior.
 
-## 2. Further token-saving opportunities (not yet applied)
+## 1b. Audit-logging consolidation (applied — structural, token-neutral)
 
-These are higher-effort or more opinionated; pick per appetite:
+The 23 per-stage "log user input / log user's response" MANDATORY lines were
+consolidated into a single **Standing Audit Rule** near the top of `CLAUDE.md`,
+with each stage keeping only a terse `Audit-log ... (see Standing Audit Rule)`
+pointer. The overlapping guidance in *Key Principles* and *Prompts Logging
+Requirements* was de-duplicated against it.
 
-1. **De-duplicate per-stage audit boilerplate.** Every stage repeats two
-   near-identical "log user input in audit.md" MANDATORY lines (~26 lines total).
-   The standing rule already lives in *Prompts Logging Requirements*. Replacing
-   the inline repeats with a single reference saves ~300 always-resident tokens.
-2. **Move the audit-log format block + directory-structure diagram** out of the
-   always-resident `CLAUDE.md` into a `common/audit-and-layout.md` loaded on
-   first write to `audit.md`. Saves ~600 always-resident tokens.
-3. **Sub-agent offloading for reverse engineering.** Brownfield reverse
+**Honest outcome:** this is roughly **token-neutral** on the always-resident
+file (the standing rule costs back most of what the terser pointers save). Its
+real value is **single-source-of-truth maintainability** and reduced drift —
+not a token win. Chasing further reduction here would require deleting the
+per-stage pointers entirely and renumbering every stage's step list, which
+risks compliance for ~145 tokens/turn; not worth it.
+
+**What actually moves the needle is section 1 (JIT loading).** The always-
+resident `CLAUDE.md` is ~76 words larger than baseline (the JIT table), but that
+one table defers ~4,550 tokens of eager loads — an excellent trade.
+
+## 2. Further token-saving opportunities (not applied — low real payoff)
+
+Evaluated and deliberately skipped:
+
+1. **Extracting the audit-format + directory-structure blocks** into a detail
+   file loaded on first `audit.md` write. Skipped: `audit.md` is written on turn
+   1, so the content loads immediately and then persists in conversation history
+   regardless — relocating it saves ~0 real tokens while adding a load step and
+   a reliability risk. Keep inline.
+2. **Sub-agent offloading for reverse engineering.** Brownfield reverse
    engineering reads the whole codebase — run it in a sub-agent (Claude Code
    Task tool) so the large file reads never enter the main context; only the
    summary returns.
-4. **Prompt caching.** The always-resident `CLAUDE.md` is a stable prefix — it is
+3. **Prompt caching.** The always-resident `CLAUDE.md` is a stable prefix — it is
    automatically eligible for Anthropic prompt caching, so trimming it lowers
    both cost and latency on every turn.
 
