@@ -19,12 +19,17 @@ The AI model intelligently assesses what stages are needed based on:
 
 All subsequent rule detail file references (e.g., `common/process-overview.md`, `inception/workspace-detection.md`) are relative to whichever rule details directory was resolved above.
 
-**Common Rules**: ALWAYS load common rules at workflow start:
-- Load `common/process-overview.md` for workflow overview
-- Load `common/session-continuity.md` for session resumption guidance
-- Load `common/content-validation.md` for content validation requirements
-- Load `common/question-format-guide.md` for question formatting rules
-- Reference these throughout the workflow execution
+**Common Rules (Just-In-Time Loading — Context-Optimized)**: Do NOT bulk-load common rules at workflow start. Each common file is loaded ONLY at its first point of need, then kept in context for the remainder of the session. This preserves context budget for actual phase work.
+
+| Common file | Load it WHEN | Do NOT load if |
+|---|---|---|
+| `common/welcome-message.md` | Starting a NEW workflow, to display the welcome message once | Resuming an existing session (state file found) |
+| `common/session-continuity.md` | Workspace Detection finds an existing `aidlc-state.md` (resuming) | Fresh greenfield/brownfield start with no prior state |
+| `common/question-format-guide.md` | Immediately before authoring the FIRST question file of the session | The stage produces no questions |
+| `common/content-validation.md` | Immediately before creating the FIRST file that contains a Mermaid/ASCII diagram or special characters | No diagram/rich content is being written yet |
+| `common/process-overview.md` | The user asks about overall workflow structure, or you need the phase-map reference | Never needed for routine stage execution |
+
+**Rule**: load once, reuse for the rest of the session. Never re-load a common file you have already loaded.
 
 ## MANDATORY: Extensions Loading (Context-Optimized)
 **CRITICAL**: At workflow start, scan the `extensions/` directory recursively but load ONLY lightweight opt-in files — NOT full rule files. Full rule files are loaded on-demand after the user opts in.
@@ -50,29 +55,13 @@ All subsequent rule detail file references (e.g., `common/process-overview.md`, 
 **Conditional Enforcement**: Extensions may be conditionally enabled/disabled. See `inception/requirements-analysis.md` for the opt-in mechanism. Before enforcing any extension at ANY stage, check its `Enabled` status in `aidlc-docs/aidlc-state.md` under `## Extension Configuration`. Skip disabled extensions and log the skip in audit.md. Default to enforced if no configuration exists. 
 
 ## MANDATORY: Content Validation
-**CRITICAL**: Before creating ANY file, you MUST validate content according to `common/content-validation.md` rules:
-- Validate Mermaid diagram syntax
-- Validate ASCII art diagrams (see `common/ascii-diagram-standards.md`)
-- Escape special characters properly
-- Provide text alternatives for complex visual content
-- Test content parsing compatibility
+**CRITICAL**: Before creating any file containing diagrams or rich content, load `common/content-validation.md` (per the JIT table above) and validate: Mermaid syntax, ASCII diagrams (see `common/ascii-diagram-standards.md`), escaped special characters, text alternatives, and parsing compatibility.
 
 ## MANDATORY: Question File Format
-**CRITICAL**: When asking questions at any phase, you MUST follow question format guidelines.
-
-**See `common/question-format-guide.md` for complete question formatting rules including**:
-- Multiple choice format (A, B, C, D, E options)
-- [Answer]: tag usage
-- Answer validation and ambiguity resolution
+**CRITICAL**: Before authoring any question file, load `common/question-format-guide.md` (per the JIT table above). It defines multiple-choice format (A–E options), `[Answer]:` tag usage, and answer/ambiguity validation.
 
 ## MANDATORY: Custom Welcome Message
-**CRITICAL**: When starting ANY software development request, you MUST display the welcome message.
-
-**How to Display Welcome Message**:
-1. Load the welcome message from `common/welcome-message.md` (in the resolved rule details directory)
-2. Display the complete message to the user
-3. This should only be done ONCE at the start of a new workflow
-4. Do NOT load this file in subsequent interactions to save context space
+**CRITICAL**: When starting a NEW workflow, load `common/welcome-message.md` (per the JIT table above), display it ONCE, and do not reload it thereafter.
 
 # Adaptive Software Development Workflow
 
@@ -449,6 +438,7 @@ The Operations stage will eventually include:
 ## Key Principles
 
 - **Adaptive Execution**: Only execute stages that add value
+- **Context Budget (Token-Efficient)**: Load rule detail and common files just-in-time at their point of need — never bulk-load ahead. Load each file once, reuse for the session, and never re-read a file already in context. This keeps the context window available for actual phase work and delays hitting context limits.
 - **Transparent Planning**: Always show execution plan before starting
 - **User Control**: User can request stage inclusion/exclusion
 - **Progress Tracking**: Update aidlc-state.md with executed and skipped stages
