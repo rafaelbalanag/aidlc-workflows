@@ -86,29 +86,45 @@ Evaluated and deliberately skipped:
   cleanly onto the Construction phase's Build-and-Test and review gates.
 - **Plan mode** — pairs naturally with the Inception phase's approval gates.
 
-### MCP servers worth adding
+### Configured MCP servers (`.mcp.json` at repo root)
 
-| MCP server | Why it helps AI-DLC |
+A project-scoped **`.mcp.json`** now ships at the repo root. Claude Code picks
+it up automatically (it prompts once to approve project-scoped servers). It is
+deliberately **lean** — every configured server injects its tool schemas into
+every request, which works against the same context budget this optimization
+protects.
+
+| Server (in `.mcp.json`) | Transport | Why it earns its schema tokens |
+|---|---|---|
+| **github** | Remote HTTP (`api.githubcopilot.com/mcp/`) | PR/issue/CI loop for Build-and-Test → review. The `X-MCP-Toolsets` header restricts it to `context,repos,issues,pull_requests,actions` so unused toolsets never cost schema tokens. Set `X-MCP-Readonly: true` for review-only sessions. |
+| **context7** | Remote HTTP (`mcp.context7.com/mcp`) | Pulls current, version-specific library docs on demand during Code Generation — a net token *saver* vs. pasting docs into context or fixing hallucinated APIs. |
+| **sequential-thinking** | stdio (`npx`) | One tool, tiny schema. Structured decomposition for Application Design / Units Generation. |
+
+Remote HTTP transports are preferred where available: no local npm install,
+no cold start, and auth via OAuth on first use.
+
+### Deliberately excluded (gap review)
+
+| Candidate | Why excluded |
 |---|---|
-| **GitHub MCP** | PR/issue/CI automation for the Build-and-Test → review loop without leaving the workflow. |
-| **Filesystem MCP** | Scoped, auditable file access for the `aidlc-docs/` tree. |
-| **Context7 / docs-fetch MCP** | Pulls current library/API docs on demand during Code Generation instead of guessing from training data. |
-| **Sequential-thinking MCP** | Structured multi-step reasoning for Application Design and Units Generation decomposition. |
-| **Playwright MCP** | Drives the app for e2e verification in Build-and-Test (Chromium is preinstalled in this environment). |
-| **AWS / Terraform MCP** | Grounds Infrastructure Design in real resource schemas and validated IaC. |
+| **Filesystem MCP** | Redundant — Claude Code's built-in Read/Write/Edit/Glob/Grep already cover it; adding it would only duplicate schema tokens. |
+| **Memory / knowledge-graph MCP** | Redundant — AI-DLC already persists cross-session state in `aidlc-docs/aidlc-state.md` + `audit.md` (session-continuity rules). |
+| **Playwright MCP** | Heavy (~20 tool schemas). Valuable in *application* projects for Build-and-Test e2e verification — add per-project: `claude mcp add playwright -- npx -y @playwright/mcp@latest`. Not needed in this rules repo. |
+| **AWS / Terraform MCP** | Project-specific. Add in projects with Infrastructure Design stages (e.g. `uvx awslabs.aws-documentation-mcp-server@latest`). |
 
-### How to add an MCP server to Claude Code
+### Using this in YOUR project
+
+The `.mcp.json` here doubles as a template: copy it to your application
+project's root alongside the AI-DLC rules, then add the project-specific
+servers (Playwright, AWS) only if your workflow reaches those stages.
 
 ```bash
-# example: GitHub MCP
-claude mcp add github -- npx -y @modelcontextprotocol/server-github
-# then confirm it loaded
-claude mcp list
+claude mcp list   # verify what loaded and its connection status
 ```
 
-Keep each server **scoped** — the more tools in context, the more schema tokens
-per turn, which works against the same budget this optimization protects. Add
-servers per project need rather than globally.
+Rule of thumb: **each server must earn its schema tokens every turn.** When a
+server is only needed occasionally, prefer adding it for that session
+(`claude mcp add ...`) over leaving it in `.mcp.json`.
 
 ## 4. Measuring it
 
