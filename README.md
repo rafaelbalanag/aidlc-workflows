@@ -827,7 +827,10 @@ You can extend an existing category or create an entirely new one.
 
 AI-DLC stages differ widely in how much reasoning they actually need. Workspace Detection is mechanical scanning; Application Design shapes the entire system. Running every stage on your most capable model burns usage limits on work a smaller model does just as well — so the workflow includes per-stage **model tier and reasoning effort recommendations** (defined in `aws-aidlc-rule-details/common/model-selection.md`).
 
-At each stage transition, the workflow surfaces a one-line recommendation when the suggested tier differs from the model you are running. Recommendations are **advisory only** — the workflow never blocks or pauses waiting for a model switch, every stage runs correctly on any tier, and you can pin one model for the whole workflow to suppress recommendations entirely.
+Model selection runs in one of two modes, detected automatically at workflow start:
+
+- **Delegated mode (automatic enforcement)** — on platforms that support fixed-model subagents (Claude Code), install the AI-DLC tier agents below and the workflow delegates each stage's heavy work to the right model by itself. No manual switching: the workflow simply announces which model executed each stage.
+- **Advisory mode (default)** — everywhere else, the workflow surfaces a one-line recommendation at stage transitions when the suggested tier differs from the model you are running. Recommendations never block or pause the workflow, every stage runs correctly on any tier, and you can pin one model for the whole workflow to suppress them entirely.
 
 ### Tiers at a Glance
 
@@ -840,7 +843,85 @@ At each stage transition, the workflow surfaces a one-line recommendation when t
 
 Escalation is driven by the same signals as [adaptive depth](#key-features): comprehensive-depth stages move up one tier, minimal-depth stages may move down one. The full per-stage table and behavior rules live in `common/model-selection.md`. The tiers are platform-agnostic — on other model lineups, map your small / medium / large reasoning models to Efficient / Standard / Deep and omit Frontier if there is no equivalent.
 
-### Switching Models in Claude Code
+### Automatic Enforcement in Claude Code (Delegated Mode)
+
+Claude Code [subagents](https://code.claude.com/docs/en/sub-agents) can pin a `model` in their definition, and the pinned model applies regardless of what your session is running. AI-DLC uses this to enforce tiers without any manual switching: the orchestrating session (your chat — run it on Sonnet) resolves each stage's tier, delegates the stage's artifact generation to the matching tier agent, and keeps every question and approval gate with you in the main conversation. Subagents never interact with the user directly.
+
+Create the tier agents in your project:
+
+**Unix/Linux/macOS:**
+
+```bash
+mkdir -p .claude/agents
+
+body=$(cat << 'EOF'
+You execute exactly one delegated AI-DLC stage per invocation.
+
+1. From the delegation prompt, note the stage, workspace root, and rule-details directory.
+2. Read `aidlc-docs/aidlc-state.md`, the stage's rule file, and the artifacts the stage depends on.
+3. Produce ONLY that stage's artifacts and plan/checkbox updates, exactly as the rules prescribe.
+4. Never interact with the user and never advance to another stage — questions and approvals belong
+   to the orchestrating session. If user input is needed, write the question file per the
+   question-format rules and stop.
+5. Do NOT write to audit.md — the orchestrator owns the audit log.
+6. Return a concise report: artifacts created or updated, open questions, and anything the
+   orchestrator must relay to the user.
+EOF
+)
+
+# Add "frontier:fable" to the list below to enable the optional Fable 5 tier.
+for pair in efficient:haiku standard:sonnet deep:opus; do
+  tier="${pair%%:*}" model="${pair##*:}"
+  printf -- '---\nname: aidlc-%s\ndescription: Runs AI-DLC workflow stages assigned to the %s model tier. Invoked by the AI-DLC orchestrator with a stage name and rule paths.\nmodel: %s\n---\n\n%s\n' \
+    "$tier" "$tier" "$model" "$body" > ".claude/agents/aidlc-$tier.md"
+done
+```
+
+**Windows PowerShell:**
+
+```powershell
+New-Item -ItemType Directory -Force -Path ".claude\agents"
+
+$body = @'
+You execute exactly one delegated AI-DLC stage per invocation.
+
+1. From the delegation prompt, note the stage, workspace root, and rule-details directory.
+2. Read `aidlc-docs/aidlc-state.md`, the stage's rule file, and the artifacts the stage depends on.
+3. Produce ONLY that stage's artifacts and plan/checkbox updates, exactly as the rules prescribe.
+4. Never interact with the user and never advance to another stage — questions and approvals belong
+   to the orchestrating session. If user input is needed, write the question file per the
+   question-format rules and stop.
+5. Do NOT write to audit.md — the orchestrator owns the audit log.
+6. Return a concise report: artifacts created or updated, open questions, and anything the
+   orchestrator must relay to the user.
+'@
+
+# Add frontier = "fable" to the hashtable to enable the optional Fable 5 tier.
+$tiers = @{ efficient = "haiku"; standard = "sonnet"; deep = "opus" }
+foreach ($tier in $tiers.Keys) {
+  @"
+---
+name: aidlc-$tier
+description: Runs AI-DLC workflow stages assigned to the $tier model tier. Invoked by the AI-DLC orchestrator with a stage name and rule paths.
+model: $($tiers[$tier])
+---
+
+$body
+"@ | Out-File -FilePath ".claude\agents\aidlc-$tier.md" -Encoding utf8
+}
+```
+
+> [!NOTE]
+> On Windows CMD, use the PowerShell commands above — CMD has no comfortable syntax for writing multi-line files. After creating the agents, restart Claude Code and run `/agents` to confirm `aidlc-efficient`, `aidlc-standard`, and `aidlc-deep` are listed. With the agents installed, the workflow detects delegated mode at start and announces per stage, e.g., `🤖 Executing Application Design on the Deep tier (Opus).`
+
+How delegated mode behaves (full rules in `common/model-selection.md`):
+
+- Stage artifact generation runs on the pinned tier model; your session model is untouched.
+- All approval gates and question rounds stay in your main conversation — delegation changes who writes the artifacts, never who decides.
+- If a resolved tier's agent isn't installed (e.g., no `aidlc-frontier`), the next lower installed tier is used; if delegation fails, the stage runs inline with an advisory recommendation instead.
+- Each delegation (stage, tier, model, outcome) is logged in `audit.md`.
+
+### Manual Switching in Claude Code (Advisory Mode)
 
 - Use `/model` mid-session to switch — the conversation and workflow state carry over, so you can run Inception on Sonnet and hop to Opus just for Application Design.
 - Start a session on a specific model with `claude --model <model>`.
@@ -1023,6 +1104,7 @@ AGENTS.md
 .cursor/rules/
 .clinerules/
 .claude/commands/
+.claude/agents/
 .github/copilot-instructions.md
 .aidlc-rule-details/
 .aidlc/

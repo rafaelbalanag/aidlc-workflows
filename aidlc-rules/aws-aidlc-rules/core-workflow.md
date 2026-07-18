@@ -458,7 +458,7 @@ The Operations stage will eventually include:
   - **CRITICAL**: Never summarize or paraphrase user input in audit log
   - **CRITICAL**: Log every interaction, not just approvals
 - **Quality Focus**: Complex changes get full treatment, simple changes stay efficient
-- **Cost-Aware Execution**: At each stage transition, surface the recommended model tier and reasoning effort per `common/model-selection.md`. Recommendations are advisory — NEVER block or pause the workflow waiting for a model switch
+- **Cost-Aware Execution**: Follow `common/model-selection.md` for per-stage model tiers. When AI-DLC tier agents are installed (delegated mode), delegate each stage's artifact work to the matching tier agent automatically and announce which model executed it; otherwise surface an advisory recommendation at stage transitions. In either mode, NEVER block or pause the workflow waiting for a model switch, and keep all user questions and approvals in the orchestrating session
 - **Content Validation**: Always validate content before file creation per content-validation.md rules
 - **NO EMERGENT BEHAVIOR**: Construction phases MUST use standardized 2-option completion messages as defined in their respective rule files. DO NOT create 3-option menus or other emergent navigation patterns.
 

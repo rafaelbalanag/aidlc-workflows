@@ -64,7 +64,40 @@ Tier and depth (see `depth-levels.md`) move together:
 - **Standard depth**: Use the stage's default tier.
 - **Comprehensive depth**: Escalate the stage one tier (Standard → Deep; Deep → Frontier where available).
 
-## Behavior Rules
+## Enforcement Modes
+
+Model selection runs in one of two modes. Detect the mode ONCE at workflow start and record it in `aidlc-docs/aidlc-state.md` under `## Model Selection Mode`:
+
+- **Delegated Mode (automatic)**: Active when the platform supports delegating work to subagents with a fixed model AND AI-DLC tier agents are installed (see "Tier Agents" below). The workflow enforces tiers itself — no manual switching — and simply informs the user which model executed each stage.
+- **Advisory Mode (default)**: Active everywhere else. The workflow recommends a tier at stage transitions; the user decides whether to switch.
+
+### Tier Agents (Delegated Mode)
+
+Tier agents follow a naming convention so the orchestrator can discover them (on Claude Code: `.claude/agents/aidlc-<tier>.md`):
+
+| Agent Name        | Tier      | Claude Model Pin |
+| ----------------- | --------- | ---------------- |
+| `aidlc-efficient` | Efficient | `haiku`          |
+| `aidlc-standard`  | Standard  | `sonnet`         |
+| `aidlc-deep`      | Deep      | `opus`           |
+| `aidlc-frontier`  | Frontier  | `fable`          |
+
+`aidlc-frontier` is optional; when the resolved tier has no installed agent, use the highest installed tier below it.
+
+### Delegated Mode Rules
+
+1. **Delegate the heavy work, keep the conversation**: For each stage, resolve the tier from the table (adjusted for depth and escalation criteria) and delegate the stage's artifact-generation work to that tier's agent. The orchestrating session handles everything user-facing: presenting questions, collecting answers and approvals, and logging to `audit.md`.
+2. **Delegation prompt contents**: Include the stage name, the workspace root, the resolved rule-details directory path, the location of `aidlc-docs/`, and which prior artifacts the stage depends on. Tier agents start with a fresh context — they see none of the conversation.
+3. **User interaction never happens inside a delegation**: Subagents cannot talk to the user. If a stage needs answers mid-stage, the tier agent writes the question file and returns; the orchestrator presents it, collects answers, then re-delegates to continue the stage.
+4. **Announce, don't ask**: At each stage start, state which tier and model is executing, for example:
+   `🤖 Executing Application Design on the Deep tier (Opus).`
+   This is informational only — the user takes no action.
+5. **Approvals stay untouched**: Delegation changes WHO generates artifacts, never the approval gates. Every "Wait for Explicit Approval" rule in the core workflow still runs in the orchestrating session.
+6. **Fallback**: If delegation fails (missing agent, platform error), execute the stage inline in the orchestrating session and fall back to an advisory recommendation for that stage.
+7. **Audit**: Log each delegation (stage, tier, model, outcome) in `audit.md`. Tier agents MUST NOT write to `audit.md` themselves — the orchestrator owns the audit log.
+8. **Orchestrator cost**: Because heavy generation is delegated, the orchestrating session itself can run on the Standard tier for the entire workflow.
+
+## Advisory Mode Rules
 
 1. **At each stage transition**, determine the recommended tier from the table above, adjusted for depth and the escalation criteria.
 2. **If the recommendation differs** from the tier the session is currently running on (when known), append ONE line to the stage-start message, for example:
@@ -72,7 +105,7 @@ Tier and depth (see `depth-levels.md`) move together:
 3. **NEVER block**: Do not pause, wait, or re-prompt for a model switch. If the user does not switch, proceed on the current model.
 4. **Do not repeat**: If the user ignores or declines a recommendation for a stage, do not raise it again within that stage.
 5. **Respect a fixed preference**: If the user says to stay on one model, record it in `aidlc-docs/aidlc-state.md` under `## Model Preference` and suppress all further recommendations for the workflow.
-6. **Programmatic switching**: An agent that can switch models itself MUST ask before moving to a higher-cost tier, but MAY move to a lower-cost tier silently and note it in the stage-start message.
+6. **Programmatic session switching**: An agent that can change the SESSION model itself MUST ask before moving to a higher-cost tier, but MAY move to a lower-cost tier silently and note it in the stage-start message. (This applies to advisory mode only — in delegated mode, per-stage delegation to installed tier agents is automatic and announced, not asked.)
 7. **Audit**: Log each recommendation and the user's action (switched / declined / ignored) once in `audit.md`.
 8. **Per-unit loop**: Do not oscillate tiers within a unit. Choose the tier when the unit's stage begins and keep it until the stage's approval message; approval/answer turns stay on the current model.
 
