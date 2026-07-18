@@ -24,6 +24,7 @@ All subsequent rule detail file references (e.g., `common/process-overview.md`, 
 - Load `common/session-continuity.md` for session resumption guidance
 - Load `common/content-validation.md` for content validation requirements
 - Load `common/question-format-guide.md` for question formatting rules
+- Load `common/model-selection.md` for per-stage model tier and reasoning effort recommendations
 - Reference these throughout the workflow execution
 
 ## MANDATORY: Extensions Loading (Context-Optimized)
@@ -457,6 +458,7 @@ The Operations stage will eventually include:
   - **CRITICAL**: Never summarize or paraphrase user input in audit log
   - **CRITICAL**: Log every interaction, not just approvals
 - **Quality Focus**: Complex changes get full treatment, simple changes stay efficient
+- **Cost-Aware Execution**: At each stage transition, surface the recommended model tier and reasoning effort per `common/model-selection.md`. Recommendations are advisory — NEVER block or pause the workflow waiting for a model switch
 - **Content Validation**: Always validate content before file creation per content-validation.md rules
 - **NO EMERGENT BEHAVIOR**: Construction phases MUST use standardized 2-option completion messages as defined in their respective rule files. DO NOT create 3-option menus or other emergent navigation patterns.
 

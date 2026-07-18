@@ -18,6 +18,7 @@ AI-DLC is an intelligent software development workflow that adapts to your needs
 - [Three-Phase Adaptive Workflow](#three-phase-adaptive-workflow)
 - [Key Features](#key-features)
 - [Extensions](#extensions)
+- [Model and Effort Recommendations](#model-and-effort-recommendations)
 - [Supporting Tools](#supporting-tools)
 - [Tenets](#tenets)
 - [Prerequisites](#prerequisites)
@@ -763,6 +764,7 @@ Deployment and monitoring (future)
 | **Question-Driven**       | Structured multiple-choice questions in files, not chat                                                   |
 | **Always in Control**     | Review execution plans and approve each phase                                                             |
 | **Extensible**            | Layer custom rules e.g. security, compliance, and organization-specific rules on top of the core workflow |
+| **Cost-Aware**            | Per-stage model tier and reasoning effort recommendations keep premium model limits for the hardest work  |
 
 ---
 
@@ -818,6 +820,32 @@ You can extend an existing category or create an entirely new one.
    - Include a **Verification** section with concrete checks the model should evaluate.
 3. Add a matching **opt-in file** using the naming convention `<name>.opt-in.md` (e.g., `compliance.opt-in.md`). See `security-baseline.opt-in.md` for the expected format. Omitting this file means the extension is always enforced with no user opt-out.
 4. Rules are blocking by default — if verification criteria are not met, the stage cannot proceed until the finding is resolved.
+
+---
+
+## Model and Effort Recommendations
+
+AI-DLC stages differ widely in how much reasoning they actually need. Workspace Detection is mechanical scanning; Application Design shapes the entire system. Running every stage on your most capable model burns usage limits on work a smaller model does just as well — so the workflow includes per-stage **model tier and reasoning effort recommendations** (defined in `aws-aidlc-rule-details/common/model-selection.md`).
+
+At each stage transition, the workflow surfaces a one-line recommendation when the suggested tier differs from the model you are running. Recommendations are **advisory only** — the workflow never blocks or pauses waiting for a model switch, every stage runs correctly on any tier, and you can pin one model for the whole workflow to suppress recommendations entirely.
+
+### Tiers at a Glance
+
+| Tier      | Example (Claude family) | Used For                                                                | Reasoning Effort   |
+| --------- | ----------------------- | ----------------------------------------------------------------------- | ------------------ |
+| Efficient | Haiku 4.5               | Workspace Detection, Build and Test, minimal-depth stages               | Off / minimal      |
+| Standard  | Sonnet 5                | Requirements, User Stories, Planning, most design and Code Generation   | Default            |
+| Deep      | Opus 4.8                | Application Design, complex per-unit design, critical code plans        | Extended thinking  |
+| Frontier  | Fable 5 (optional)      | Hardest architecture on large, multi-unit, or high-risk systems         | Extended thinking  |
+
+Escalation is driven by the same signals as [adaptive depth](#key-features): comprehensive-depth stages move up one tier, minimal-depth stages may move down one. The full per-stage table and behavior rules live in `common/model-selection.md`. The tiers are platform-agnostic — on other model lineups, map your small / medium / large reasoning models to Efficient / Standard / Deep and omit Frontier if there is no equivalent.
+
+### Switching Models in Claude Code
+
+- Use `/model` mid-session to switch — the conversation and workflow state carry over, so you can run Inception on Sonnet and hop to Opus just for Application Design.
+- Start a session on a specific model with `claude --model <model>`.
+- Reserve extended thinking for Deep/Frontier-tier stages rather than leaving it on for the whole workflow.
+- Fable 5 (`claude-fable-5`) sits above Opus in capability and cost; treat it as an opt-in for the most architecture-critical stages, not a default.
 
 ---
 
