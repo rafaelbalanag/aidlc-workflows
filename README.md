@@ -18,6 +18,7 @@ AI-DLC is an intelligent software development workflow that adapts to your needs
 - [Three-Phase Adaptive Workflow](#three-phase-adaptive-workflow)
 - [Key Features](#key-features)
 - [Extensions](#extensions)
+- [Model and Effort Recommendations](#model-and-effort-recommendations)
 - [Supporting Tools](#supporting-tools)
 - [Tenets](#tenets)
 - [Prerequisites](#prerequisites)
@@ -377,14 +378,160 @@ xcopy "%USERPROFILE%\Downloads\aidlc-rules\aws-aidlc-rule-details" ".aidlc-rule-
 
 ### Claude Code
 
-AI-DLC uses Claude Code's project memory file (`CLAUDE.md`) to implement its intelligent workflow.
+AI-DLC integrates with Claude Code through its [memory system](https://code.claude.com/docs/en/memory) (`CLAUDE.md` and `@file` imports) and [custom slash commands](https://code.claude.com/docs/en/skills). Three setup options are provided:
+
+- **Option 1 — Import into `CLAUDE.md` (Recommended):** adds a single `@import` line, so AI-DLC loads alongside your existing project memory without replacing it.
+- **Option 2 — `/aidlc` slash command:** loads the workflow on demand only when you invoke it, keeping the context window free in sessions where you don't use AI-DLC.
+- **Option 3 — Standalone `CLAUDE.md`:** simplest setup for projects that don't have a `CLAUDE.md` yet.
 
 The commands below assume you extracted the zip to your `Downloads` folder so that the resulting path is `Downloads/aidlc-rules/`. If you used a different location, replace `Downloads` with your actual folder path.
 
 > [!NOTE]
 > **Windows users:** if you used File Explorer's **Extract All...** dialog, it defaults to creating a wrapper folder named after the zip (e.g., `ai-dlc-rules-v0.1.8\aidlc-rules\...`). Either uncheck/edit that destination so the contents land directly in `Downloads\aidlc-rules\` (matching the commands below), or prepend `ai-dlc-rules-v<version>\` to each `Downloads\` path in the commands — substituting `<version>` with the release you downloaded.
 
-#### Option 1: Project Root (Recommended)
+#### Option 1: Import into CLAUDE.md (Recommended)
+
+Copies the core rules into a dedicated `.aidlc/` folder and appends one `@import` line to `CLAUDE.md`. Claude Code expands the import automatically at session start, so the workflow is always active — and any existing project memory in `CLAUDE.md` is preserved.
+
+**Unix/Linux/macOS:**
+
+```bash
+mkdir -p .aidlc
+cp -R ~/Downloads/aidlc-rules/aws-aidlc-rules .aidlc/
+mkdir -p .aidlc-rule-details
+cp -R ~/Downloads/aidlc-rules/aws-aidlc-rule-details/* .aidlc-rule-details/
+printf '\n@.aidlc/aws-aidlc-rules/core-workflow.md\n' >> CLAUDE.md
+```
+
+**Windows PowerShell:**
+
+```powershell
+New-Item -ItemType Directory -Force -Path ".aidlc"
+Copy-Item -Recurse "$env:USERPROFILE\Downloads\aidlc-rules\aws-aidlc-rules" ".aidlc\"
+New-Item -ItemType Directory -Force -Path ".aidlc-rule-details"
+Copy-Item -Recurse "$env:USERPROFILE\Downloads\aidlc-rules\aws-aidlc-rule-details\*" ".aidlc-rule-details\"
+Add-Content -Path "CLAUDE.md" -Value "`n@.aidlc/aws-aidlc-rules/core-workflow.md"
+```
+
+**Windows CMD:**
+
+```cmd
+mkdir .aidlc
+xcopy "%USERPROFILE%\Downloads\aidlc-rules\aws-aidlc-rules" ".aidlc\aws-aidlc-rules\" /E /I
+mkdir .aidlc-rule-details
+xcopy "%USERPROFILE%\Downloads\aidlc-rules\aws-aidlc-rule-details" ".aidlc-rule-details\" /E /I
+echo.>> CLAUDE.md
+echo @.aidlc/aws-aidlc-rules/core-workflow.md>> CLAUDE.md
+```
+
+> [!NOTE]
+> The `@import` line must sit outside any code fence in `CLAUDE.md`, and imports resolve relative to the file that contains them. See the [Claude Code memory documentation](https://code.claude.com/docs/en/memory) for details.
+
+**Directory Structure (Option 1):**
+
+```text
+<my-project>/
+├── CLAUDE.md                  # Existing content + @import line
+├── .aidlc/
+│   └── aws-aidlc-rules/
+│       └── core-workflow.md
+└── .aidlc-rule-details/
+    ├── common/
+    ├── inception/
+    ├── construction/
+    ├── extensions/
+    └── operations/
+```
+
+#### Option 2: /aidlc Slash Command (On-Demand)
+
+Registers a project-scoped `/aidlc` command instead of loading the workflow into every session. The workflow rules are read only when the command is invoked, which keeps your context window free in sessions where you are not using AI-DLC — the same context-saving principle the workflow itself applies to its rule details and extensions.
+
+**Unix/Linux/macOS:**
+
+```bash
+mkdir -p .aidlc .claude/commands
+cp -R ~/Downloads/aidlc-rules/aws-aidlc-rules .aidlc/
+mkdir -p .aidlc-rule-details
+cp -R ~/Downloads/aidlc-rules/aws-aidlc-rule-details/* .aidlc-rule-details/
+
+cat > .claude/commands/aidlc.md << 'EOF'
+---
+description: Start the AI-DLC workflow for a software development request
+argument-hint: [your development intent]
+---
+
+Read `.aidlc/aws-aidlc-rules/core-workflow.md` and follow the AI-DLC workflow it
+defines for this request: $ARGUMENTS
+EOF
+```
+
+**Windows PowerShell:**
+
+```powershell
+New-Item -ItemType Directory -Force -Path ".aidlc", ".claude\commands"
+Copy-Item -Recurse "$env:USERPROFILE\Downloads\aidlc-rules\aws-aidlc-rules" ".aidlc\"
+New-Item -ItemType Directory -Force -Path ".aidlc-rule-details"
+Copy-Item -Recurse "$env:USERPROFILE\Downloads\aidlc-rules\aws-aidlc-rule-details\*" ".aidlc-rule-details\"
+
+@'
+---
+description: Start the AI-DLC workflow for a software development request
+argument-hint: [your development intent]
+---
+
+Read `.aidlc/aws-aidlc-rules/core-workflow.md` and follow the AI-DLC workflow it
+defines for this request: $ARGUMENTS
+'@ | Out-File -FilePath ".claude\commands\aidlc.md" -Encoding utf8
+```
+
+**Windows CMD:**
+
+```cmd
+mkdir .aidlc
+mkdir .claude\commands
+xcopy "%USERPROFILE%\Downloads\aidlc-rules\aws-aidlc-rules" ".aidlc\aws-aidlc-rules\" /E /I
+mkdir .aidlc-rule-details
+xcopy "%USERPROFILE%\Downloads\aidlc-rules\aws-aidlc-rule-details" ".aidlc-rule-details\" /E /I
+(
+echo ---
+echo description: Start the AI-DLC workflow for a software development request
+echo argument-hint: [your development intent]
+echo ---
+echo.
+echo Read `.aidlc/aws-aidlc-rules/core-workflow.md` and follow the AI-DLC workflow it defines for this request: $ARGUMENTS
+) > .claude\commands\aidlc.md
+```
+
+With this option, start the workflow by invoking the command with your intent:
+
+```text
+/aidlc Build a REST API for order management
+```
+
+Because the command declares a `description`, Claude Code may also invoke it automatically when you phrase a request as "Using AI-DLC, ...".
+
+**Directory Structure (Option 2):**
+
+```text
+<my-project>/
+├── .claude/
+│   └── commands/
+│       └── aidlc.md
+├── .aidlc/
+│   └── aws-aidlc-rules/
+│       └── core-workflow.md
+└── .aidlc-rule-details/
+    ├── common/
+    ├── inception/
+    ├── construction/
+    ├── extensions/
+    └── operations/
+```
+
+#### Option 3: Standalone CLAUDE.md
+
+Copies the core workflow as your project's `CLAUDE.md`. Use this only when the project has no `CLAUDE.md` yet — the copy replaces any existing file. (If you prefer to keep the project root clean, `.claude/CLAUDE.md` is an equally supported location — adjust the destination path accordingly.)
 
 **Unix/Linux/macOS:**
 
@@ -410,42 +557,7 @@ mkdir .aidlc-rule-details
 xcopy "%USERPROFILE%\Downloads\aidlc-rules\aws-aidlc-rule-details" ".aidlc-rule-details\" /E /I
 ```
 
-#### Option 2: .claude Directory
-
-**Unix/Linux/macOS:**
-
-```bash
-mkdir -p .claude
-cp ~/Downloads/aidlc-rules/aws-aidlc-rules/core-workflow.md .claude/CLAUDE.md
-mkdir -p .aidlc-rule-details
-cp -R ~/Downloads/aidlc-rules/aws-aidlc-rule-details/* .aidlc-rule-details/
-```
-
-**Windows PowerShell:**
-
-```powershell
-New-Item -ItemType Directory -Force -Path ".claude"
-Copy-Item "$env:USERPROFILE\Downloads\aidlc-rules\aws-aidlc-rules\core-workflow.md" ".claude\CLAUDE.md"
-New-Item -ItemType Directory -Force -Path ".aidlc-rule-details"
-Copy-Item "$env:USERPROFILE\Downloads\aidlc-rules\aws-aidlc-rule-details\*" ".aidlc-rule-details\" -Recurse
-```
-
-**Windows CMD:**
-
-```cmd
-mkdir .claude
-copy "%USERPROFILE%\Downloads\aidlc-rules\aws-aidlc-rules\core-workflow.md" ".claude\CLAUDE.md"
-mkdir .aidlc-rule-details
-xcopy "%USERPROFILE%\Downloads\aidlc-rules\aws-aidlc-rule-details" ".aidlc-rule-details\" /E /I
-```
-
-**Verify Setup:**
-
-1. Start Claude Code in your project directory (CLI: `claude` or VS Code extension)
-2. Use the `/config` command to view current configuration
-3. Ask Claude: "What instructions are currently active in this project?"
-
-**Directory Structure (Option 1):**
+**Directory Structure (Option 3):**
 
 ```text
 <my-project>/
@@ -457,6 +569,13 @@ xcopy "%USERPROFILE%\Downloads\aidlc-rules\aws-aidlc-rule-details" ".aidlc-rule-
     ├── extensions/
     └── operations/
 ```
+
+**Verify Setup (all options):**
+
+1. Start Claude Code in your project directory (CLI: `claude` or the IDE extension)
+2. Run `/context` and confirm `CLAUDE.md` appears among the loaded memory files (Options 1 and 3), or type `/aidlc` and confirm it appears in the command autocomplete (Option 2)
+3. Run `/memory` to list and open the loaded memory files
+4. Ask Claude: "What instructions are currently active in this project?"
 
 ---
 
@@ -645,6 +764,7 @@ Deployment and monitoring (future)
 | **Question-Driven**       | Structured multiple-choice questions in files, not chat                                                   |
 | **Always in Control**     | Review execution plans and approve each phase                                                             |
 | **Extensible**            | Layer custom rules e.g. security, compliance, and organization-specific rules on top of the core workflow |
+| **Cost-Aware**            | Per-stage model tier and reasoning effort recommendations keep premium model limits for the hardest work  |
 
 ---
 
@@ -700,6 +820,113 @@ You can extend an existing category or create an entirely new one.
    - Include a **Verification** section with concrete checks the model should evaluate.
 3. Add a matching **opt-in file** using the naming convention `<name>.opt-in.md` (e.g., `compliance.opt-in.md`). See `security-baseline.opt-in.md` for the expected format. Omitting this file means the extension is always enforced with no user opt-out.
 4. Rules are blocking by default — if verification criteria are not met, the stage cannot proceed until the finding is resolved.
+
+---
+
+## Model and Effort Recommendations
+
+AI-DLC stages differ widely in how much reasoning they actually need. Workspace Detection is mechanical scanning; Application Design shapes the entire system. Running every stage on your most capable model burns usage limits on work a smaller model does just as well — so the workflow includes per-stage **model tier and reasoning effort recommendations** (defined in `aws-aidlc-rule-details/common/model-selection.md`).
+
+Model selection runs in one of two modes, detected automatically at workflow start:
+
+- **Delegated mode (automatic enforcement)** — on platforms that support fixed-model subagents (Claude Code), install the AI-DLC tier agents below and the workflow delegates each stage's heavy work to the right model by itself. No manual switching: the workflow simply announces which model executed each stage.
+- **Advisory mode (default)** — everywhere else, the workflow surfaces a one-line recommendation at stage transitions when the suggested tier differs from the model you are running. Recommendations never block or pause the workflow, every stage runs correctly on any tier, and you can pin one model for the whole workflow to suppress them entirely.
+
+### Tiers at a Glance
+
+| Tier      | Example (Claude family) | Used For                                                                | Reasoning Effort   |
+| --------- | ----------------------- | ----------------------------------------------------------------------- | ------------------ |
+| Efficient | Haiku 4.5               | Workspace Detection, Build and Test, minimal-depth stages               | Off / minimal      |
+| Standard  | Sonnet 5                | Requirements, User Stories, Planning, most design and Code Generation   | Default            |
+| Deep      | Opus 4.8                | Application Design, complex per-unit design, critical code plans        | Extended thinking  |
+| Frontier  | Fable 5 (optional)      | Hardest architecture on large, multi-unit, or high-risk systems         | Extended thinking  |
+
+Escalation is driven by the same signals as [adaptive depth](#key-features): comprehensive-depth stages move up one tier, minimal-depth stages may move down one. The full per-stage table and behavior rules live in `common/model-selection.md`. The tiers are platform-agnostic — on other model lineups, map your small / medium / large reasoning models to Efficient / Standard / Deep and omit Frontier if there is no equivalent.
+
+### Automatic Enforcement in Claude Code (Delegated Mode)
+
+Claude Code [subagents](https://code.claude.com/docs/en/sub-agents) can pin a `model` in their definition, and the pinned model applies regardless of what your session is running. AI-DLC uses this to enforce tiers without any manual switching: the orchestrating session (your chat — run it on Sonnet) resolves each stage's tier, delegates the stage's artifact generation to the matching tier agent, and keeps every question and approval gate with you in the main conversation. Subagents never interact with the user directly.
+
+Create the tier agents in your project:
+
+**Unix/Linux/macOS:**
+
+```bash
+mkdir -p .claude/agents
+
+body=$(cat << 'EOF'
+You execute exactly one delegated AI-DLC stage per invocation.
+
+1. From the delegation prompt, note the stage, workspace root, and rule-details directory.
+2. Read `aidlc-docs/aidlc-state.md`, the stage's rule file, and the artifacts the stage depends on.
+3. Produce ONLY that stage's artifacts and plan/checkbox updates, exactly as the rules prescribe.
+4. Never interact with the user and never advance to another stage — questions and approvals belong
+   to the orchestrating session. If user input is needed, write the question file per the
+   question-format rules and stop.
+5. Do NOT write to audit.md — the orchestrator owns the audit log.
+6. Return a concise report: artifacts created or updated, open questions, and anything the
+   orchestrator must relay to the user.
+EOF
+)
+
+# Add "frontier:fable" to the list below to enable the optional Fable 5 tier.
+for pair in efficient:haiku standard:sonnet deep:opus; do
+  tier="${pair%%:*}" model="${pair##*:}"
+  printf -- '---\nname: aidlc-%s\ndescription: Runs AI-DLC workflow stages assigned to the %s model tier. Invoked by the AI-DLC orchestrator with a stage name and rule paths.\nmodel: %s\n---\n\n%s\n' \
+    "$tier" "$tier" "$model" "$body" > ".claude/agents/aidlc-$tier.md"
+done
+```
+
+**Windows PowerShell:**
+
+```powershell
+New-Item -ItemType Directory -Force -Path ".claude\agents"
+
+$body = @'
+You execute exactly one delegated AI-DLC stage per invocation.
+
+1. From the delegation prompt, note the stage, workspace root, and rule-details directory.
+2. Read `aidlc-docs/aidlc-state.md`, the stage's rule file, and the artifacts the stage depends on.
+3. Produce ONLY that stage's artifacts and plan/checkbox updates, exactly as the rules prescribe.
+4. Never interact with the user and never advance to another stage — questions and approvals belong
+   to the orchestrating session. If user input is needed, write the question file per the
+   question-format rules and stop.
+5. Do NOT write to audit.md — the orchestrator owns the audit log.
+6. Return a concise report: artifacts created or updated, open questions, and anything the
+   orchestrator must relay to the user.
+'@
+
+# Add frontier = "fable" to the hashtable to enable the optional Fable 5 tier.
+$tiers = @{ efficient = "haiku"; standard = "sonnet"; deep = "opus" }
+foreach ($tier in $tiers.Keys) {
+  @"
+---
+name: aidlc-$tier
+description: Runs AI-DLC workflow stages assigned to the $tier model tier. Invoked by the AI-DLC orchestrator with a stage name and rule paths.
+model: $($tiers[$tier])
+---
+
+$body
+"@ | Out-File -FilePath ".claude\agents\aidlc-$tier.md" -Encoding utf8
+}
+```
+
+> [!NOTE]
+> On Windows CMD, use the PowerShell commands above — CMD has no comfortable syntax for writing multi-line files. After creating the agents, restart Claude Code and run `/agents` to confirm `aidlc-efficient`, `aidlc-standard`, and `aidlc-deep` are listed. With the agents installed, the workflow detects delegated mode at start and announces per stage, e.g., `🤖 Executing Application Design on the Deep tier (Opus).`
+
+How delegated mode behaves (full rules in `common/model-selection.md`):
+
+- Stage artifact generation runs on the pinned tier model; your session model is untouched.
+- All approval gates and question rounds stay in your main conversation — delegation changes who writes the artifacts, never who decides.
+- If a resolved tier's agent isn't installed (e.g., no `aidlc-frontier`), the next lower installed tier is used; if delegation fails, the stage runs inline with an advisory recommendation instead.
+- Each delegation (stage, tier, model, outcome) is logged in `audit.md`.
+
+### Manual Switching in Claude Code (Advisory Mode)
+
+- Use `/model` mid-session to switch — the conversation and workflow state carry over, so you can run Inception on Sonnet and hop to Opus just for Application Design.
+- Start a session on a specific model with `claude --model <model>`.
+- Reserve extended thinking for Deep/Frontier-tier stages rather than leaving it on for the whole workflow.
+- Fable 5 (`claude-fable-5`) sits above Opus in capability and cost; treat it as an opt-in for the most architecture-critical stages, not a default.
 
 ---
 
@@ -842,7 +1069,11 @@ Have one of our supported platforms/tools for Assisted AI Coding installed:
 
 #### Claude Code
 
-- Use `/config` command to view current configuration
+- Run `/context` to confirm `CLAUDE.md` is among the loaded memory files; run `/memory` to list and open them
+- `@import` lines are ignored inside code fences — make sure the import sits on its own line outside any fence
+- Import paths resolve relative to the file containing the import, so `@.aidlc/aws-aidlc-rules/core-workflow.md` must be in the project-root `CLAUDE.md`
+- Changes to `CLAUDE.md` or `.claude/commands/` take effect in the next session — restart Claude Code after editing
+- For the slash-command setup, type `/` and confirm `aidlc` appears in the autocomplete
 - Ask "What instructions are currently active in this project?"
 
 #### GitHub Copilot
@@ -872,9 +1103,15 @@ AGENTS.md
 .kiro/aws-aidlc-rule-details/
 .cursor/rules/
 .clinerules/
+.claude/commands/
+.claude/agents/
 .github/copilot-instructions.md
 .aidlc-rule-details/
+.aidlc/
 ```
+
+> [!NOTE]
+> Commit `.aidlc/` when you set it up manually (e.g., Claude Code Options 1–2) so teammates share the same workflow version. The [experimental AI-assisted setup](#experimental-ai-assisted-setup-release-download) instead gitignores `.aidlc/` because it re-downloads the latest release on demand — follow whichever convention matches how you installed the rules.
 
 **Optional - Add to `.gitignore` (if needed):**
 
@@ -925,7 +1162,7 @@ Set up AI-DLC in this project by doing the following:
                                   alwaysApply: true
                                   ---
    - Cline                    → create `.clinerules/ai-dlc.md`
-   - Claude Code              → create `CLAUDE.md`
+   - Claude Code              → create `CLAUDE.md` (append to it if it already exists)
    - GitHub Copilot           → create `.github/copilot-instructions.md`
    - Any other agent          → create `AGENTS.md`
 
@@ -956,7 +1193,8 @@ The agent will download the latest release, create the correct config file for y
 | Amazon Q Developer Documentation                    | [Docs](https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/q-in-IDE.html)                                                |
 | Kiro CLI Documentation                              | [Docs](https://kiro.dev/docs/cli/steering/)                                                                                   |
 | Cursor Rules Documentation                          | [Docs](https://cursor.com/docs/context/rules)                                                                                 |
-| Claude Code Documentation                           | [GitHub](https://github.com/anthropics/claude-code)                                                                           |
+| Claude Code Documentation                           | [Docs](https://code.claude.com/docs/en/overview)                                                                              |
+| Claude Code Memory (CLAUDE.md and imports)          | [Docs](https://code.claude.com/docs/en/memory)                                                                                |
 | GitHub Copilot Documentation                        | [Docs](https://docs.github.com/en/copilot)                                                                                    |
 | Working with AI-DLC (interaction patterns and tips) | [docs/WORKING-WITH-AIDLC.md](docs/WORKING-WITH-AIDLC.md)                                                                      |
 | Contributing Guidelines                             | [CONTRIBUTING.md](CONTRIBUTING.md)                                                                                            |
